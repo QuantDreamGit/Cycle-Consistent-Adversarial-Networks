@@ -1,10 +1,9 @@
 from comet_ml import Experiment, ExistingExperiment
 
 from data.datasets import MonostyleDataset, ParallelRefDataset
-from cyclegan_tst.models.CycleGANModel import CycleGANModel
-from cyclegan_tst.models.GeneratorModel import GeneratorModel
-from cyclegan_tst.models.DiscriminatorModel import DiscriminatorModel
-from cyclegan_tst.models.ClassifierModel import ClassifierModel
+from stargan.models.StarGANModel import StarGANModel
+from stargan.models.GeneratorModel import GeneratorModel
+from stargan.models.DiscriminatorModel import DiscriminatorModel
 from eval import *
 from utils.utils import *
 
@@ -234,48 +233,18 @@ else:
 
 ''' 
     ----- ----- ----- ----- ----- ----- ----- -----
-              Instantiate Generators       
+        Instantiate Generator and Discriminator      
     ----- ----- ----- ----- ----- ----- ----- -----
 '''
 
 if args.from_pretrained is not None:
-    G_ab = GeneratorModel(args.generator_model_tag, f'{args.from_pretrained}G_ab/', max_seq_length=args.max_sequence_length)
-    G_ba = GeneratorModel(args.generator_model_tag, f'{args.from_pretrained}G_ba/', max_seq_length=args.max_sequence_length)
-    print('Generator pretrained models loaded correctly')
+    G = GeneratorModel(args.generator_model_tag, f'{args.from_pretrained}Generator/', max_seq_length=args.max_sequence_length)
+    D = DiscriminatorModel(args.discriminator_model_tag, f'{args.from_pretrained}Discriminator/', max_seq_length=args.max_sequence_length)
+    print('Generator e Discriminator pre-addestrati caricati correttamente')
 else:
-    G_ab = GeneratorModel(args.generator_model_tag, max_seq_length=args.max_sequence_length)
-    G_ba = GeneratorModel(args.generator_model_tag, max_seq_length=args.max_sequence_length)
-    print('Generator pretrained models not loaded - Initial weights will be used')
-
-
-''' 
-    ----- ----- ----- ----- ----- ----- ----- -----
-             Instantiate Discriminators       
-    ----- ----- ----- ----- ----- ----- ----- -----
-'''
-
-if args.from_pretrained is not None:
-    D_ab = DiscriminatorModel(args.discriminator_model_tag, f'{args.from_pretrained}D_ab/', max_seq_length=args.max_sequence_length)
-    D_ba = DiscriminatorModel(args.discriminator_model_tag, f'{args.from_pretrained}D_ba/', max_seq_length=args.max_sequence_length)
-    print('Discriminator pretrained models loaded correctly')
-else:
-    D_ab = DiscriminatorModel(args.discriminator_model_tag, max_seq_length=args.max_sequence_length)
-    D_ba = DiscriminatorModel(args.discriminator_model_tag, max_seq_length=args.max_sequence_length)
-    print('Discriminator pretrained models not loaded - Initial weights will be used')
-
-
-''' 
-    ----- ----- ----- ----- ----- ----- ----- -----
-             Instantiate Classifier       
-    ----- ----- ----- ----- ----- ----- ----- -----
-'''
-
-if lambdas[4] != 0:
-    Cls = ClassifierModel(args.pretrained_classifier_model, max_seq_length=args.max_sequence_length)
-    print('Classifier pretrained model loaded correctly')
-else:
-    Cls = None
-
+    G = GeneratorModel(args.generator_model_tag, max_seq_length=args.max_sequence_length)
+    D = DiscriminatorModel(args.discriminator_model_tag, max_seq_length=args.max_sequence_length)
+    print('Generator e Discriminator inizializzati con pesi casuali')
 
 ''' 
     ----- ----- ----- ----- ----- ----- ----- -----
@@ -288,7 +257,7 @@ if args.use_cuda_if_available:
 else:
     device = torch.device("cpu")
 
-cycleGAN = CycleGANModel(G_ab, G_ba, D_ab, D_ba, Cls, device=device)
+stargan = StarGANModel(G, D, device=device)
 
 n_batch_epoch = min(len(mono_dl_a), len(mono_dl_b))
 num_training_steps = args.epochs * n_batch_epoch
@@ -297,9 +266,13 @@ print(f"Total number of training steps: {num_training_steps}")
 
 warmup_steps = int(0.1*num_training_steps) if args.warmup else 0
 
-optimizer = AdamW(cycleGAN.get_optimizer_parameters(), lr=args.learning_rate)
-# scheduler types: ["linear", "cosine", "cosine_with_restarts", "polynomial", "constant", "constant_with_warmup"]
-lr_scheduler = get_scheduler(args.lr_scheduler_type, optimizer=optimizer, num_warmup_steps=warmup_steps, num_training_steps=num_training_steps)
+optimizer = AdamW(stargan.get_optimizer_parameters(), lr=args.learning_rate)
+lr_scheduler = get_scheduler(
+    args.lr_scheduler_type,
+    optimizer=optimizer,
+    num_warmup_steps=warmup_steps,
+    num_training_steps=num_training_steps
+)
     
 start_epoch = 0
 current_training_step = 0
@@ -348,57 +321,79 @@ evaluator = Evaluator(cycleGAN, args, experiment)
 
 print('Start training...')
 for epoch in range(start_epoch, args.epochs):
-    print (f"\nTraining epoch: {epoch}")
-    cycleGAN.train() # set training mode
+    print(f"\nTraining epoch: {epoch}")
+    stargan.train()  # set training mode 
 
     for unsupervised_a, unsupervised_b in zip(mono_dl_a, mono_dl_b):
         len_a, len_b = len(unsupervised_a), len(unsupervised_b)
-        if len_a > len_b: unsupervised_a = unsupervised_a[:len_b]
-        else: unsupervised_b = unsupervised_b[:len_a]
+        if len_a > len_b:
+            unsupervised_a = unsupervised_a[:len_b]
+        else:
+            unsupervised_b = unsupervised_b[:len_a]
 
-        cycleGAN.training_cycle(sentences_a=unsupervised_a,
-                                sentences_b=unsupervised_b,
-                                lambdas=lambdas,
-                                comet_experiment=experiment,
-                                loss_logging=loss_logging,
-                                training_step=current_training_step)
+        loss_dict = stargan.training_cycle(
+            sentences_a=unsupervised_a,
+            sentences_b=unsupervised_b,
+            lambdas=lambdas,
+            comet_experiment=experiment,
+            loss_logging=loss_logging
+        )
 
+        # Gestione dell'ottimizzatore e scheduler
         optimizer.step()
         lr_scheduler.step()
         optimizer.zero_grad()
         progress_bar.update(1)
         current_training_step += 1
 
-        # dummy classification metrics/BERTScore computation to see if it fits in GPU
-        if current_training_step==5:
-            if args.n_references is None: evaluator.dummy_classif()
-            elif args.bertscore: evaluator.dummy_bscore()
-        if (args.eval_strategy == "steps" and current_training_step%args.eval_steps==0) or (epoch < args.additional_eval and current_training_step%(n_batch_epoch//2+1)==0):
+        # Dummy classification metrics/BERTScore computation
+        if current_training_step == 5:
+            if args.n_references is None:
+                evaluator.dummy_classif()
+            elif args.bertscore:
+                evaluator.dummy_bscore()
+
+        # Valutazione durante l'addestramento
+        if (
+            (args.eval_strategy == "steps" and current_training_step % args.eval_steps == 0) or 
+            (epoch < args.additional_eval and current_training_step % (n_batch_epoch // 2 + 1) == 0)
+        ):
             if args.n_references is not None:
                 evaluator.run_eval_ref(epoch, current_training_step, 'validation', parallel_dl_evalAB, parallel_dl_evalBA)
             else:
                 evaluator.run_eval_mono(epoch, current_training_step, 'validation', mono_dl_a_eval, mono_dl_b_eval)
-            cycleGAN.train()
+            stargan.train()  # Ritorna in modalità train
 
+    # Valutazione alla fine dell'epoca
     if args.n_references is not None:
         evaluator.run_eval_ref(epoch, current_training_step, 'validation', parallel_dl_evalAB, parallel_dl_evalBA)
     else:
         evaluator.run_eval_mono(epoch, current_training_step, 'validation', mono_dl_a_eval, mono_dl_b_eval)
-    if epoch%args.save_steps==0:
-        cycleGAN.save_models(f"{args.save_base_folder}epoch_{epoch}/")
-        checkpoint = {'epoch':epoch+1, 'training_step':current_training_step, 'optimizer':optimizer.state_dict(), 'lr_scheduler':lr_scheduler.state_dict()}
+
+    # Salvataggio dei modelli
+    if epoch % args.save_steps == 0:
+        stargan.save_models(f"{args.save_base_folder}epoch_{epoch}/")  # Cambia da cycleGAN a stargan
+        checkpoint = {
+            'epoch': epoch + 1,
+            'training_step': current_training_step,
+            'optimizer': optimizer.state_dict(),
+            'lr_scheduler': lr_scheduler.state_dict()
+        }
         torch.save(checkpoint, f"{args.save_base_folder}epoch_{epoch}/checkpoint.pth")
         if epoch > 0 and os.path.exists(f"{args.save_base_folder}epoch_{epoch-1}/checkpoint.pth"):
             os.remove(f"{args.save_base_folder}epoch_{epoch-1}/checkpoint.pth")
         if epoch > 0 and os.path.exists(f"{args.save_base_folder}loss.pickle"):
             os.remove(f"{args.save_base_folder}loss.pickle")
         pickle.dump(loss_logging, open(f"{args.save_base_folder}loss.pickle", 'wb'))
+
+    # Controllo per terminare l'addestramento
     if args.control_file is not None and os.path.exists(args.control_file):
         with open(args.control_file, 'r') as f:
             if f.read() == 'STOP':
                 print(f'STOP command received - Stopped at epoch {epoch}')
                 os.remove(args.control_file)
                 break
-    cycleGAN.train()
+
+    stargan.train()  # Torna in modalità train alla fine dell'epoca
 
 print('End training...')

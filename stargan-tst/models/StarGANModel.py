@@ -122,6 +122,50 @@ class StarGANModel(nn.Module):
 
         # Backward pass for discriminator
         total_loss_d.backward()
+    
+    def training_cycle(
+        self,
+        sentences_a: List[str],
+        sentences_b: List[str],
+        lambdas: List[float],
+        comet_experiment=None,
+        loss_logging=None,
+        training_step=None,
+    ):
+        
+        """
+        Esegue un ciclo di addestramento per un batch di dati.
+
+        Args:
+            sentences_a (List[str]): Frasi del dominio A
+            sentences_b (List[str]): Frasi del dominio B
+            lambdas (List[float]): Pesi dei vari loss
+            comet_experiment: Oggetto per il logging su Comet (opzionale)
+            loss_logging (dict): Dizionario per loggare i loss
+            training_step (int): Numero del passo di addestramento (opzionale)
+        
+        Returns:
+            loss_dict: Un dizionario contenente i loss per il ciclo
+        """
+
+        loss_dict_a = {}
+        loss_dict_b = {}
+
+        # Elabora il primo batch (dominio A)
+        loss_dict_a = self.training_step(
+            sentences_a, target_styles_a, target_styles_b, lambdas, comet_experiment, loss_logging, training_step
+        )
+
+        # Elabora il secondo batch (dominio B)
+        loss_dict_b = self.training_step(
+            sentences_b, target_styles_b, target_styles_a, lambdas, comet_experiment, loss_logging, training_step
+        )
+
+        # Combina i loss dei due domini
+        total_loss = {key: loss_dict_a[key] + loss_dict_b[key] for key in loss_dict_a}
+
+        return total_loss
+
 
     def save_models(self, base_path: Union[str]):
         """Save the models."""
