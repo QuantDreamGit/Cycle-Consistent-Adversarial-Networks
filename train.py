@@ -317,7 +317,7 @@ loss_logging['hyper_params'] = hyper_params
 progress_bar = tqdm(range(num_training_steps))
 progress_bar.update(current_training_step)
 
-evaluator = Evaluator(cycleGAN, args, experiment)
+evaluator = Evaluator(stargan, args, experiment)
 
 print('Start training...')
 for epoch in range(start_epoch, args.epochs):
