@@ -2,8 +2,8 @@ import torch
 from torch import nn
 from typing import List, Union
 
-from cyclegan_tst.models.GeneratorModel import GeneratorModel
-from cyclegan_tst.models.DiscriminatorModel import DiscriminatorModel
+from stargan-tst.models.GeneratorModel import GeneratorModel
+from stargan-tst.models.DiscriminatorModel import DiscriminatorModel
 
 import logging
 
