@@ -1,6 +1,6 @@
 from comet_ml import Experiment, ExistingExperiment
 
-from data.datasets import MonostyleDataset, ParallelRefDataset
+from data.datasets import TextDataset
 from stargan.models.StarGANModel import StarGANModel
 from stargan.models.GeneratorModel import GeneratorModel
 from stargan.models.DiscriminatorModel import DiscriminatorModel
@@ -37,23 +37,16 @@ random.seed(SEED)
 parser = argparse.ArgumentParser()
 
 # basic parameters
-parser.add_argument('--style_a', type=str, dest="style_a", help='style A for the style transfer task (source style for G_ab).')
-parser.add_argument('--style_b', type=str, dest="style_b", help='style B for the style transfer task (target style for G_ab).')
+parser.add_argument('--n_styles',  type=int, dest="n_styles",  default=2, help='Number of different styles in the dataset -1.')
 parser.add_argument('--lang', type=str, dest="lang", default='en', help='Dataset language.')
 parser.add_argument('--max_samples_train', type=int, dest="max_samples_train", default=None, help='Max number of examples to retain from the training set. None for all available examples.')
 parser.add_argument('--max_samples_eval',  type=int, dest="max_samples_eval",  default=None, help='Max number of examples to retain from the evaluation set. None for all available examples.')
 parser.add_argument('--nonparal_same_size', action='store_true', dest="nonparal_same_size",  default=False, help='Whether to reduce non-parallel data to same size.')
 
-parser.add_argument('--path_mono_A', type=str, dest="path_mono_A", help='Path to monostyle dataset (style A) for training.')
-parser.add_argument('--path_mono_B', type=str, dest="path_mono_B", help='Path to monostyle dataset (style B) for training.')
-
-parser.add_argument('--path_mono_A_eval', type=str, dest="path_mono_A_eval", help='Path to non-parallel dataset (style A) for evaluation.')
-parser.add_argument('--path_mono_B_eval', type=str, dest="path_mono_B_eval", help='Path to non-parallel dataset (style B) for evaluation.')
-parser.add_argument('--path_paral_A_eval', type=str, dest="path_paral_A_eval", help='Path to parallel dataset (style A) for evaluation.')
-parser.add_argument('--path_paral_B_eval', type=str, dest="path_paral_B_eval", help='Path to parallel dataset (style B) for evaluation.')
-parser.add_argument('--path_paral_eval_ref', type=str, dest="path_paral_eval_ref", help='Path to human references for evaluation.')
+parser.add_argument('--path_db_tr', type=str, dest="path_db_tr", help='Path to dataset for training.')
+parser.add_argument('--path_db_eval', type=str, dest="path_db_eval", help='Path to non-parallel dataset (style A) for evaluation.')
 parser.add_argument('--n_references',  type=int, dest="n_references",  default=None, help='Number of human references for evaluation.')
-parser.add_argument('--lowercase_ref', action='store_true', dest="lowercase_ref", default=False, help='Whether to lowercase references.')
+
 parser.add_argument('--bertscore', action='store_true', dest="bertscore", default=True, help='Whether to compute BERTScore metric.')
 
 parser.add_argument('--max_sequence_length', type=int,  dest="max_sequence_length", default=64, help='Max sequence length')
@@ -70,12 +63,10 @@ parser.add_argument('--learning_rate',     type=float, dest="learning_rate",    
 parser.add_argument('--epochs',            type=int,   dest="epochs",            default=10,       help='The number of training epochs.')
 parser.add_argument('--lr_scheduler_type', type=str,   dest="lr_scheduler_type", default="linear", help='The scheduler used for the learning rate management.')
 parser.add_argument('--warmup', action='store_true', dest="warmup", default=False, help='Whether to apply warmup.')
-parser.add_argument('--lambdas', type=str,   dest="lambdas", default="1|1|1|1|1|1", help='Lambdas for loss-weighting.')
+parser.add_argument('--lambdas', type=str,   dest="lambdas", default="1|1|1|1|1", help='Lambdas for loss-weighting.')
 
 parser.add_argument('--generator_model_tag', type=str, dest="generator_model_tag", help='The tag of the model for the generator (e.g., "facebook/bart-base").')
 parser.add_argument('--discriminator_model_tag', type=str, dest="discriminator_model_tag", help='The tag of the model discriminator (e.g., "distilbert-base-cased").')
-parser.add_argument('--pretrained_classifier_model', type=str, dest="pretrained_classifier_model", help='The folder to use as base path to load the pretrained classifier for classifier-guided loss.')
-parser.add_argument('--pretrained_classifier_eval', type=str, dest="pretrained_classifier_eval", help='The folder to use as base path to load the pretrained classifier for metrics evaluation.')
 
 # arguments for saving the model and running evaluation
 parser.add_argument('--save_base_folder', type=str, dest="save_base_folder", help='The folder to use as base path to store model checkpoints')
@@ -98,8 +89,6 @@ parser.add_argument('--comet_exp',  type=str,  dest="comet_exp",  default=None, 
 
 args = parser.parse_args()
 
-style_a = args.style_a
-style_b = args.style_b
 max_samples_train = args.max_samples_train
 max_samples_eval = args.max_samples_eval
 
@@ -116,26 +105,24 @@ for key, value in vars(args).items():
     hyper_params[key] = value
     print (f"\t{key}:\t\t{value}")
 
-# lambdas: cycle-consistency, generator-fooling, disc-fake, disc-real, classifier-guided
+# lambdas: cycle-consistency, generator-fooling, disc-fake, disc-real #CONTROLLA NUMERO DI LOSS
 lambdas = [float(l) for l in args.lambdas.split('|')]
 args.lambdas = lambdas
+
+# target styles randomly chosen
+def assign_target_style(source_style, n_styles):
+    target_style = random.randint(0, n_styles-1)
+    while source_style==target_style:
+        target_style = random.randint(0, n_styles-1)
+    return target_style
     
-mono_ds_a = MonostyleDataset(dataset_format="line_file",
-                            style=style_a,
-                            dataset_path=args.path_mono_A,
-                            separator='\n',
-                            max_dataset_samples=args.max_samples_train)
+ds_train = TextDataset(file_path=args.path_db_tr, max_samples=args.max_samples_train, target_label_fn=assign_target_style, n_styles=args.n_styles)
+ds_eval = TextDataset(file_path=args.path_db_eval, max_samples=args.max_samples_eval, target_label_fn=assign_target_style, n_styles=args.n_styles)
 
-mono_ds_b = MonostyleDataset(dataset_format="line_file",
-                            style=style_b,
-                            dataset_path=args.path_mono_B,
-                            separator='\n',
-                            max_dataset_samples=args.max_samples_train)
+print(f"Training data  : {len(ds_train)}")
+print(f"Evaluation data  : {len(ds_eval)}")
 
-if args.nonparal_same_size:
-    mono_ds_a_len, mono_ds_b_len = len(mono_ds_a), len(mono_ds_b)
-    if mono_ds_a_len > mono_ds_b_len: mono_ds_a.reduce_data(mono_ds_b_len)
-    else: mono_ds_b.reduce_data(mono_ds_a_len)
+'''DA CAPIRE A COSA SERVA IL PARALLEL
 
 if args.n_references is not None:
     parallel_ds_evalAB = ParallelRefDataset(dataset_format='line_file',
@@ -180,20 +167,25 @@ else:
     print (f"Mono B eval: {len(mono_ds_b_eval)}")
 print()
 
-
-mono_dl_a = DataLoader(mono_ds_a,
+'''
+dataloader = DataLoader(ds_train,
                         batch_size=args.batch_size,
                         shuffle=args.shuffle,
                         num_workers=args.num_workers,
                         pin_memory=args.pin_memory)
 
-mono_dl_b = DataLoader(mono_ds_b,
-                        batch_size=args.batch_size,
-                        shuffle=args.shuffle,
-                        num_workers=args.num_workers,
-                        pin_memory=args.pin_memory)
-del mono_ds_a, mono_ds_b
+dl_eval = DataLoader(ds_eval,
+                    batch_size=args.batch_size,
+                    shuffle=False,
+                    num_workers=args.num_workers,
+                    pin_memory=args.pin_memory)
 
+del ds_train, ds_eval
+
+print (f"Training lenght (batches): {len(dataloader)}")
+print (f"Evaluation lenght (batches): {len(dl_eval)}")
+
+'''
 if args.n_references is not None:
     parallel_dl_evalAB = DataLoader(parallel_ds_evalAB,
                                     batch_size=args.batch_size,
@@ -229,7 +221,7 @@ if args.n_references is not None:
 else:
     print (f"Mono A eval (batches): {len(mono_dl_a_eval)}")
     print (f"Mono B eval (batches): {len(mono_dl_b_eval)}")
-
+'''
 
 ''' 
     ----- ----- ----- ----- ----- ----- ----- -----
@@ -238,12 +230,12 @@ else:
 '''
 
 if args.from_pretrained is not None:
-    G = GeneratorModel(args.generator_model_tag, f'{args.from_pretrained}Generator/', max_seq_length=args.max_sequence_length)
-    D = DiscriminatorModel(args.discriminator_model_tag, f'{args.from_pretrained}Discriminator/', max_seq_length=args.max_sequence_length)
+    G = GeneratorModel(args.generator_model_tag, f'{args.from_pretrained}Generator/', num_domains=args.n_styles, max_seq_length=args.max_sequence_length)
+    D = DiscriminatorModel(args.discriminator_model_tag, f'{args.from_pretrained}Discriminator/', num_domains=args.n_styles, max_seq_length=args.max_sequence_length)
     print('Generator e Discriminator pre-addestrati caricati correttamente')
 else:
-    G = GeneratorModel(args.generator_model_tag, max_seq_length=args.max_sequence_length)
-    D = DiscriminatorModel(args.discriminator_model_tag, max_seq_length=args.max_sequence_length)
+    G = GeneratorModel(args.generator_model_tag, num_domains=args.n_styles, max_seq_length=args.max_sequence_length)
+    D = DiscriminatorModel(args.discriminator_model_tag, num_domains=args.n_styles, max_seq_length=args.max_sequence_length)
     print('Generator e Discriminator inizializzati con pesi casuali')
 
 ''' 
@@ -259,7 +251,7 @@ else:
 
 stargan = StarGANModel(G, D, device=device)
 
-n_batch_epoch = min(len(mono_dl_a), len(mono_dl_b))
+n_batch_epoch = dataloader
 num_training_steps = args.epochs * n_batch_epoch
 
 print(f"Total number of training steps: {num_training_steps}")
@@ -317,26 +309,24 @@ loss_logging['hyper_params'] = hyper_params
 progress_bar = tqdm(range(num_training_steps))
 progress_bar.update(current_training_step)
 
-evaluator = Evaluator(cycleGAN, args, experiment)
+evaluator = Evaluator(stargan, args, experiment)
 
 print('Start training...')
 for epoch in range(start_epoch, args.epochs):
     print(f"\nTraining epoch: {epoch}")
     stargan.train()  # set training mode 
 
-    for unsupervised_a, unsupervised_b in zip(mono_dl_a, mono_dl_b):
-        len_a, len_b = len(unsupervised_a), len(unsupervised_b)
-        if len_a > len_b:
-            unsupervised_a = unsupervised_a[:len_b]
-        else:
-            unsupervised_b = unsupervised_b[:len_a]
+    for batch in dataloader:
+        sentences, source_style, target_style = batch
 
-        loss_dict = stargan.training_cycle(
-            sentences_a=unsupervised_a,
-            sentences_b=unsupervised_b,
+        loss_dict = stargan.training_step(
+            sentences=sentences,
+            source_style = source_style,
+            target_style = target_style,
             lambdas=lambdas,
             comet_experiment=experiment,
-            loss_logging=loss_logging
+            loss_logging=loss_logging,
+            training_step = current_training_step
         )
 
         # Gestione dell'ottimizzatore e scheduler
@@ -359,17 +349,17 @@ for epoch in range(start_epoch, args.epochs):
             (epoch < args.additional_eval and current_training_step % (n_batch_epoch // 2 + 1) == 0)
         ):
             if args.n_references is not None:
-                evaluator.run_eval_ref(epoch, current_training_step, 'validation', parallel_dl_evalAB, parallel_dl_evalBA)
+                evaluator.run_eval_no_ref(epoch, current_training_step, 'validation', dl_eval) ##DA MODIFICARE CON RUN_EVAL_REF
             else:
-                evaluator.run_eval_mono(epoch, current_training_step, 'validation', mono_dl_a_eval, mono_dl_b_eval)
+                evaluator.run_eval_no_ref(epoch, current_training_step, 'validation', dl_eval)
             stargan.train()  # Ritorna in modalità train
 
     # Valutazione alla fine dell'epoca
     if args.n_references is not None:
-        evaluator.run_eval_ref(epoch, current_training_step, 'validation', parallel_dl_evalAB, parallel_dl_evalBA)
+        evaluator.run_eval_no_ref(epoch, current_training_step, 'validation', dl_eval) #DA MODIFICARE CON RUN_EVAL_REF
     else:
-        evaluator.run_eval_mono(epoch, current_training_step, 'validation', mono_dl_a_eval, mono_dl_b_eval)
-
+        evaluator.run_eval_no_ref(epoch, current_training_step, 'validation', dl_eval)
+        
     # Salvataggio dei modelli
     if epoch % args.save_steps == 0:
         stargan.save_models(f"{args.save_base_folder}epoch_{epoch}/")  # Cambia da cycleGAN a stargan

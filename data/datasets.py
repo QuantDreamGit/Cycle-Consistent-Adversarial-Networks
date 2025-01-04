@@ -8,6 +8,46 @@ import numpy as np
 
 from torch.utils.data import Dataset
 
+import torch
+from torch.utils.data import Dataset
+
+class TextDataset(Dataset):
+    def __init__(self, file_path, transform=None, max_samples=None, target_label_fn=None, n_styles=2):
+        """
+        Args:
+            file_path (str): Percorso del file contenente le frasi e le classi.
+            transform (callable, optional): Funzione di trasformazione da applicare alle frasi.
+            max_samples (int, optional): Numero massimo di campioni da includere nel dataset.
+            target_label_fn (callable, optional): Funzione per calcolare lo stile di trasformazione.
+        """
+        self.data = []
+        self.transform = transform
+        self.additional_int_fn = target_label_fn  # Funzione per calcolare il terzo valore
+        
+        # Legge il file e salva le righe come tuple (frase, classe, int aggiuntivo)
+        with open(file_path, 'r', encoding='utf-8') as file:
+            for line in file:
+                phrase, label = line.strip().split(',')
+                source_style = int(label)  # Converte la classe in un intero
+                target_style = target_label_fn(source_style, n_styles) if target_label_fn else 0
+                self.data.append((phrase, source_style, target_style))
+                
+                # Interrompi la lettura se il limite di campioni è raggiunto
+                if max_samples is not None and len(self.data) >= max_samples:
+                    break
+
+    def __len__(self):
+        # Restituisce il numero di campioni nel dataset
+        return len(self.data)
+
+    def __getitem__(self, idx):
+        # Restituisce il campione corrispondente all'indice idx
+        phrase, source_style, target_style = self.data[idx]
+        if self.transform:
+            phrase = self.transform(phrase)
+        return phrase, source_style, target_style
+
+
 class MonostyleDataset(Dataset):
     """
     Mono-style dataset

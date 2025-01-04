@@ -11,11 +11,11 @@ from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_sc
 
 class Evaluator():
 
-    def __init__(self, cycleGAN, args, experiment):
+    def __init__(self, starGAN, args, experiment):
         """ Class for evaluation """
         super(Evaluator, self).__init__()
 
-        self.cycleGAN = cycleGAN
+        self.starGAN = starGAN
         self.args = args
         self.experiment = experiment
 
@@ -84,80 +84,82 @@ class Evaluator():
         return acc, prec, rec, f1
 
 
-    def run_eval_mono(self, epoch, current_training_step, phase, mono_dl_a_eval, mono_dl_b_eval):
+    def run_eval_no_ref(self, epoch, current_training_step, phase, dataset):
+        """
+        Evaluates the model on a single dataset structured as 
+        (sentence, original_style_code, new_style_code).
+        """
         print(f'Start {phase}...')
-        self.cycleGAN.eval() # set evaluation mode
+        self.cycleGAN.eval()  # set evaluation mode
 
         if self.args.comet_logging:
-            if phase == 'validation': context = self.experiment.validate
-            elif phase == 'test': context = self.experiment.test
-        
-        real_A, real_B = [], []
-        pred_A, pred_B = [], []
-        scores_AB_bleu_self, scores_BA_bleu_self = [], []
-        scores_AB_r1_self, scores_BA_r1_self, scores_AB_r2_self, scores_BA_r2_self, scores_AB_rL_self, scores_BA_rL_self = [], [], [], [], [], []
+            if phase == 'validation':
+                context = self.experiment.validate
+            elif phase == 'test':
+                context = self.experiment.test
 
-        for batch in mono_dl_a_eval:
-            mono_a = list(batch)
+        real_sentences, pred_sentences = [], []
+        scores_bleu_self, scores_r1_self, scores_r2_self, scores_rL_self = [], [], [], []
+
+        for batch in dataset:
+            # Unpack the batch into components
+            sentences = [item[0] for item in batch]
+            original_styles = [item[1] for item in batch]
+            target_styles = [item[2] for item in batch]
+
             with torch.no_grad():
-                transferred = self.cycleGAN.transfer(sentences=mono_a, direction='AB')
-            real_A.extend(mono_a)
-            pred_B.extend(transferred)
-            mono_a = [[s] for s in mono_a]
-            scores_AB_bleu_self.extend(self.__compute_metric__(transferred, mono_a, 'bleu'))
-            scores_rouge_self = np.array(self.__compute_metric__(transferred, mono_a, 'rouge'))
-            scores_AB_r1_self.extend(scores_rouge_self[:, 0].tolist())
-            scores_AB_r2_self.extend(scores_rouge_self[:, 1].tolist())
-            scores_AB_rL_self.extend(scores_rouge_self[:, 2].tolist())
-        avg_AB_bleu_self = np.mean(scores_AB_bleu_self)
-        avg_AB_r1_self, avg_AB_r2_self, avg_AB_rL_self = np.mean(scores_AB_r1_self), np.mean(scores_AB_r2_self), np.mean(scores_AB_rL_self)
+                transferred = self.cycleGAN.transfer(sentences=sentences, target_styles=target_styles)
+            
+            real_sentences.extend(sentences)
+            pred_sentences.extend(transferred)
+            
+            # Prepare for metric computation
+            references = [[s] for s in sentences]
+            scores_bleu_self.extend(self.__compute_metric__(transferred, references, 'bleu'))
+            scores_rouge_self = np.array(self.__compute_metric__(transferred, references, 'rouge'))
+            scores_r1_self.extend(scores_rouge_self[:, 0].tolist())
+            scores_r2_self.extend(scores_rouge_self[:, 1].tolist())
+            scores_rL_self.extend(scores_rouge_self[:, 2].tolist())
 
-        for batch in mono_dl_b_eval:
-            mono_b = list(batch)
-            with torch.no_grad():
-                transferred = self.cycleGAN.transfer(sentences=mono_b, direction='BA')
-            real_B.extend(mono_b)
-            pred_A.extend(transferred)
-            mono_b = [[s] for s in mono_b]
-            scores_BA_bleu_self.extend(self.__compute_metric__(transferred, mono_b, 'bleu'))
-            scores_rouge_self = np.array(self.__compute_metric__(transferred, mono_b, 'rouge'))
-            scores_BA_r1_self.extend(scores_rouge_self[:, 0].tolist())
-            scores_BA_r2_self.extend(scores_rouge_self[:, 1].tolist())
-            scores_BA_rL_self.extend(scores_rouge_self[:, 2].tolist())
-        avg_BA_bleu_self = np.mean(scores_BA_bleu_self)
-        avg_BA_r1_self, avg_BA_r2_self, avg_BA_rL_self = np.mean(scores_BA_r1_self), np.mean(scores_BA_r2_self), np.mean(scores_BA_rL_self)
-        avg_2dir_bleu_self = (avg_AB_bleu_self + avg_BA_bleu_self) / 2
+        # Calculate averages for the metrics
+        avg_bleu_self = np.mean(scores_bleu_self)
+        avg_r1_self, avg_r2_self, avg_rL_self = (
+            np.mean(scores_r1_self),
+            np.mean(scores_r2_self),
+            np.mean(scores_rL_self),
+        )
 
-        acc, _, _, _ = self.__compute_classif_metrics__(pred_A, pred_B)
+        # Calculate accuracy metrics
+        acc, _, _, _ = self.__compute_classif_metrics__(real_sentences, pred_sentences)
         acc_scaled = acc * 100
-        avg_acc_bleu_self = (avg_2dir_bleu_self + acc_scaled) / 2
-        avg_acc_bleu_self_geom = (avg_2dir_bleu_self * acc_scaled)**0.5
-        avg_acc_bleu_self_h = 2*avg_2dir_bleu_self*acc_scaled/(avg_2dir_bleu_self+acc_scaled+1e-6)
+        avg_acc_bleu_self = (avg_bleu_self + acc_scaled) / 2
+        avg_acc_bleu_self_geom = (avg_bleu_self * acc_scaled) ** 0.5
+        avg_acc_bleu_self_h = 2 * avg_bleu_self * acc_scaled / (avg_bleu_self + acc_scaled + 1e-6)
 
-        metrics = {'epoch':epoch, 'step':current_training_step,
-                   'self-BLEU A->B':avg_AB_bleu_self, 'self-BLEU B->A':avg_BA_bleu_self,
-                   'self-BLEU avg':avg_2dir_bleu_self,
-                   'self-ROUGE-1 A->B':avg_AB_r1_self, 'self-ROUGE-1 B->A':avg_BA_r1_self,
-                   'self-ROUGE-2 A->B':avg_AB_r2_self, 'self-ROUGE-2 B->A':avg_BA_r2_self,
-                   'self-ROUGE-L A->B':avg_AB_rL_self, 'self-ROUGE-L B->A':avg_BA_rL_self,
-                   'style accuracy':acc, 'acc-BLEU':avg_acc_bleu_self, 'g-acc-BLEU':avg_acc_bleu_self_geom, 'h-acc-BLEU':avg_acc_bleu_self_h}
-        
+        # Save the metrics
+        metrics = {
+            'epoch': epoch,
+            'step': current_training_step,
+            'self-BLEU avg': avg_bleu_self,
+            'self-ROUGE-1 avg': avg_r1_self,
+            'self-ROUGE-2 avg': avg_r2_self,
+            'self-ROUGE-L avg': avg_rL_self,
+            'style accuracy': acc,
+            'acc-BLEU': avg_acc_bleu_self,
+            'g-acc-BLEU': avg_acc_bleu_self_geom,
+            'h-acc-BLEU': avg_acc_bleu_self_h,
+        }
+
+        # Determine file paths
+        base_path = f"{self.args.save_base_folder}epoch_{epoch}/"
         if phase == 'validation':
-            base_path = f"{self.args.save_base_folder}epoch_{epoch}/"
+            suffix = f'epoch{epoch}'
             if self.args.eval_strategy == 'epochs':
-                suffix = f'epoch{epoch}'
-                if epoch < self.args.additional_eval:
-                    suffix += f'_step{current_training_step}'
-            else: suffix = f'step{current_training_step}'
+                suffix += f'_step{current_training_step}'
         else:
-            if self.args.from_pretrained is not None:
-                if self.args.save_base_folder is not None:
-                    base_path = f"{self.args.save_base_folder}"
-                else:
-                    base_path = f"{self.args.from_pretrained}epoch_{epoch}/"
-            else:
-                base_path = f"{self.args.save_base_folder}test/epoch_{epoch}/"
+            base_path = f"{self.args.save_base_folder}test/epoch_{epoch}/"
             suffix = f'epoch{epoch}_test'
+        
         os.makedirs(os.path.dirname(base_path), exist_ok=True)
         pickle.dump(metrics, open(f"{base_path}metrics_{suffix}.pickle", 'wb'))
 
@@ -165,23 +167,21 @@ class Evaluator():
             if m not in ['epoch', 'step']:
                 print(f'{m}: {v}')
 
-        df_AB = pd.DataFrame()
-        df_AB['A (source)'] = real_A
-        df_AB['B (generated)'] = pred_B
-        df_AB.to_csv(f"{base_path}AB_{suffix}.csv", sep=',', header=True)
-        df_BA = pd.DataFrame()
-        df_BA['B (source)'] = real_B
-        df_BA['A (generated)'] = pred_A
-        df_BA.to_csv(f"{base_path}BA_{suffix}.csv", sep=',', header=True)
+        # Save results in CSV format
+        df = pd.DataFrame()
+        df['Source Sentence'] = real_sentences
+        df['Generated Sentence'] = pred_sentences
+        df.to_csv(f"{base_path}results_{suffix}.csv", sep=',', header=True)
 
+        # Log to Comet if enabled
         if self.args.comet_logging:
             with context():
-                self.experiment.log_table(f'./AB_{suffix}.csv', tabular_data=df_AB, headers=True)
-                self.experiment.log_table(f'./BA_{suffix}.csv', tabular_data=df_BA, headers=True)
+                self.experiment.log_table(f'./results_{suffix}.csv', tabular_data=df, headers=True)
                 for m, v in metrics.items():
                     if m not in ['epoch', 'step']:
                         self.experiment.log_metric(m, v, step=current_training_step, epoch=epoch)
-        del df_AB, df_BA
+        
+        del df
         print(f'End {phase}...')
 
     

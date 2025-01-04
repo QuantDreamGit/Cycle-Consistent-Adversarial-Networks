@@ -49,8 +49,8 @@ class StarGANModel(nn.Module):
     def training_step(
         self,
         sentences: List[str],
-        target_styles: List[int],
         source_styles: List[int],
+        target_styles: List[int],
         lambdas: List[float],
         comet_experiment=None,
         loss_logging=None,
@@ -61,10 +61,10 @@ class StarGANModel(nn.Module):
 
         Args:
             sentences: Input sentences
-            target_styles: Target style labels for the sentences
-            source_styles: Source style labels for the sentences
+            domains: Source style indices for the sentences
             lambdas: List of lambda values for weighting the losses
         """
+
         # ----------------- Generator Step -----------------
         self.D.eval()  # Freeze the discriminator during generator training
         
@@ -75,10 +75,11 @@ class StarGANModel(nn.Module):
         zeros = torch.zeros(len(transferred_sentences))
         ones = torch.ones(len(transferred_sentences))
         labels_fake_sentences = torch.column_stack((ones, zeros))  # Class index 0 = Fake
-        _, loss_g_adv = self.D(transferred_sentences, labels_fake_sentences, device=self.device)
+        _, loss_g_adv = self.D(transferred_sentences, validity_labels=labels_fake_sentences, device=self.device)
 
         # Style classification loss for generator
-        _, loss_g_style = self.D(transferred_sentences, target_styles, device=self.device)
+        target_styles_tensor = torch.tensor(target_styles, dtype=torch.long, device=self.device)
+        _, loss_g_style = self.D(transferred_sentences, domain_labels=target_styles_tensor, device=self.device)
 
         # Cycle-consistency loss (optional)
         reconstructed_sentences, _, loss_cycle = self.G(transferred_sentences, source_styles, device=self.device)
@@ -102,14 +103,14 @@ class StarGANModel(nn.Module):
 
         # Discriminator loss for real sentences
         labels_real_sentences = torch.column_stack((ones, zeros))  # Class index 0 = Real
-        _, loss_d_real = self.D(sentences, labels_real_sentences, device=self.device)
+        _, loss_d_real = self.D(sentences, validity_labels=labels_real_sentences, device=self.device)
 
         # Discriminator loss for fake sentences
         labels_fake_sentences = torch.column_stack((zeros, ones))  # Class index 1 = Fake
-        _, loss_d_fake = self.D(transferred_sentences.detach(), labels_fake_sentences, device=self.device)
+        _, loss_d_fake = self.D(transferred_sentences.detach(), validity_labels=labels_fake_sentences, device=self.device)
 
         # Style classification loss for discriminator
-        _, loss_d_style = self.D(sentences, source_styles, device=self.device)
+        _, loss_d_style = self.D(sentences, domain_labels=source_styles, device=self.device)
 
         # Total discriminator loss
         total_loss_d = lambdas[3] * (loss_d_real + loss_d_fake) + lambdas[4] * loss_d_style
@@ -122,50 +123,6 @@ class StarGANModel(nn.Module):
 
         # Backward pass for discriminator
         total_loss_d.backward()
-    
-    def training_cycle(
-        self,
-        sentences_a: List[str],
-        sentences_b: List[str],
-        lambdas: List[float],
-        comet_experiment=None,
-        loss_logging=None,
-        training_step=None,
-    ):
-        
-        """
-        Esegue un ciclo di addestramento per un batch di dati.
-
-        Args:
-            sentences_a (List[str]): Frasi del dominio A
-            sentences_b (List[str]): Frasi del dominio B
-            lambdas (List[float]): Pesi dei vari loss
-            comet_experiment: Oggetto per il logging su Comet (opzionale)
-            loss_logging (dict): Dizionario per loggare i loss
-            training_step (int): Numero del passo di addestramento (opzionale)
-        
-        Returns:
-            loss_dict: Un dizionario contenente i loss per il ciclo
-        """
-
-        loss_dict_a = {}
-        loss_dict_b = {}
-
-        # Elabora il primo batch (dominio A)
-        loss_dict_a = self.training_step(
-            sentences_a, target_styles_a, target_styles_b, lambdas, comet_experiment, loss_logging, training_step
-        )
-
-        # Elabora il secondo batch (dominio B)
-        loss_dict_b = self.training_step(
-            sentences_b, target_styles_b, target_styles_a, lambdas, comet_experiment, loss_logging, training_step
-        )
-
-        # Combina i loss dei due domini
-        total_loss = {key: loss_dict_a[key] + loss_dict_b[key] for key in loss_dict_a}
-
-        return total_loss
-
 
     def save_models(self, base_path: Union[str]):
         """Save the models."""
