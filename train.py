@@ -321,8 +321,8 @@ for epoch in range(start_epoch, args.epochs):
 
         loss_dict = stargan.training_step(
             sentences=sentences,
-            source_style = source_style,
-            target_style = target_style,
+            source_styles = source_style,
+            target_styles = target_style,
             lambdas=lambdas,
             comet_experiment=experiment,
             loss_logging=loss_logging,
