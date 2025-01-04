@@ -84,8 +84,8 @@ class DiscriminatorModel(nn.Module):
             return_tensors="pt",
         ).to(device)
 
-        # Get hidden states from the base model
-        outputs = self.base_model.bert(inputs["input_ids"], attention_mask=inputs["attention_mask"])
+
+        outputs = self.base_model.distilbert(input_ids=inputs["input_ids"], attention_mask=inputs["attention_mask"])
         hidden_states = outputs.last_hidden_state[:, 0, :]  # CLS token representation
 
         # Compute predictions
