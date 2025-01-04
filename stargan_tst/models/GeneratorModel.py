@@ -1,4 +1,5 @@
 from typing import List, Union
+import torch
 from torch import nn
 from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
 
