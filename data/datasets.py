@@ -25,7 +25,7 @@ class TextDataset(Dataset):
         # Legge il file e salva le righe come tuple (frase, classe, int aggiuntivo)
         with open(file_path, 'r', encoding='utf-8') as file:
             for line in file:
-                phrase, label = line.strip().split(',')
+                phrase, label = line.strip().split('[ENDSTRING]')
                 source_style = int(label)  # Converte la classe in un intero
                 target_style = target_label_fn(source_style, n_styles) if target_label_fn else 0
                 self.data.append((phrase, source_style, target_style))
