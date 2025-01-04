@@ -79,7 +79,7 @@ class GeneratorModel(nn.Module):
 
         # Generate domain embeddings
         domain_indices = torch.tensor(target_domains, dtype=torch.long, device=device)
-        domain_embeds = self.domain_embedding(domain_indices)
+        domain_embeds = self.domain_embedding(domain_indices, device=device)
 
         # Integrate domain embeddings into encoder input
         encoder_inputs = self.model.get_encoder()(inputs["input_ids"], return_dict=True)
