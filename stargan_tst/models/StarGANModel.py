@@ -46,7 +46,21 @@ class StarGANModel(nn.Module):
         self.D.eval()
 
     def get_optimizer_parameters(self):
-        return list(self.G.model.parameters()) + list(self.D.model.parameters())
+        """
+        Restituisce i parametri del generatore e del discriminatore per l'ottimizzatore.
+        """
+        # Include i parametri del generatore
+        generator_params = list(self.G.parameters())
+
+        # Include i parametri del discriminatore: base_model, validity_head, domain_head
+        discriminator_params = (
+            list(self.D.base_model.parameters()) +
+            list(self.D.validity_head.parameters()) +
+            list(self.D.domain_head.parameters())
+        )
+
+        # Combina e restituisce i parametri
+        return generator_params + discriminator_params
 
     def training_step(
         self,
