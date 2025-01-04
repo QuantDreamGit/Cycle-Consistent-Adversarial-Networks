@@ -251,7 +251,7 @@ else:
 
 stargan = StarGANModel(G, D, device=device)
 
-n_batch_epoch = dataloader
+n_batch_epoch = len(dataloader)
 num_training_steps = args.epochs * n_batch_epoch
 
 print(f"Total number of training steps: {num_training_steps}")
