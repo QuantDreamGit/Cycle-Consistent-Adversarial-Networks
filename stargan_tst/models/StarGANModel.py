@@ -85,7 +85,7 @@ class StarGANModel(nn.Module):
         self.D.eval()  # Freeze the discriminator during generator training
         
         # Generate transformed sentences
-        transferred_sentences, _ = self.G(sentences, target_styles, device=self.device)
+        _, transferred_sentences = self.G(sentences, target_styles, device=self.device)
 
         # Adversarial loss for generator (fooling the discriminator)
         zeros = torch.zeros(len(transferred_sentences))
