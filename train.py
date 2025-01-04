@@ -1,9 +1,9 @@
 from comet_ml import Experiment, ExistingExperiment
 
 from data.datasets import TextDataset
-from stargan.models.StarGANModel import StarGANModel
-from stargan.models.GeneratorModel import GeneratorModel
-from stargan.models.DiscriminatorModel import DiscriminatorModel
+from stargan-tst.models.StarGANModel import StarGANModel
+from stargan-tst.models.GeneratorModel import GeneratorModel
+from stargan-tst.models.DiscriminatorModel import DiscriminatorModel
 from eval import *
 from utils.utils import *
 
