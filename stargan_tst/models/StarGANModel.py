@@ -33,7 +33,9 @@ class StarGANModel(nn.Module):
 
         # Move models to the device
         self.G.model.to(self.device)
-        self.D.model.to(self.device)
+        self.D.base_model.to(self.device)
+        self.D.validity_head.to(self.device)
+        self.D.domain_head.to(self.device)
 
     def train(self):
         self.G.train()
