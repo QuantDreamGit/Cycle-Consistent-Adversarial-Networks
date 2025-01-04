@@ -79,11 +79,11 @@ class GeneratorModel(nn.Module):
 
         # Generate domain embeddings
         domain_indices = torch.tensor(target_domains, dtype=torch.long, device=device)
-        domain_embeds = self.domain_embedding(domain_indices, device=device)
+        domain_embeds = self.domain_embedding(domain_indices).to(device)
 
         # Integrate domain embeddings into encoder input
         encoder_inputs = self.model.get_encoder()(inputs["input_ids"], return_dict=True)
-        encoder_outputs = encoder_inputs.last_hidden_state + domain_embeds.unsqueeze(1)
+        encoder_outputs = encoder_inputs.last_hidden_state.to(device) + domain_embeds.unsqueeze(1)
 
         if target_sentences is not None:
             # Tokenize target sentences for supervised learning
