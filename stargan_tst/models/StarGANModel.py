@@ -91,11 +91,11 @@ class StarGANModel(nn.Module):
         zeros = torch.zeros(len(transferred_sentences))
         ones = torch.ones(len(transferred_sentences))
         labels_fake_sentences = torch.column_stack((ones, zeros))  # Class index 0 = Fake
-        _, loss_g_adv = self.D(transferred_sentences, validity_labels=labels_fake_sentences, device=self.device)
+        loss_g_adv = self.D(transferred_sentences, validity_labels=labels_fake_sentences, device=self.device)["validity_loss"]
 
         # Style classification loss for generator
         target_styles_tensor = torch.tensor(target_styles, dtype=torch.long, device=self.device)
-        _, loss_g_style = self.D(transferred_sentences, domain_labels=target_styles_tensor, device=self.device)
+        loss_g_style = self.D(transferred_sentences, domain_labels=target_styles_tensor, device=self.device)["domain_loss"]
 
         # Cycle-consistency loss (optional)
         reconstructed_sentences, _, loss_cycle = self.G(transferred_sentences, source_styles, device=self.device)

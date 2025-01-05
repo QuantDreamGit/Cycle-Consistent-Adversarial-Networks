@@ -90,16 +90,18 @@ class DiscriminatorModel(nn.Module):
 
         # Compute predictions
         validity_logits = self.validity_head(hidden_states)  # Real/Fake logits
-        domain_logits = self.domain_head(hidden_states)  # Domain classification logits
+        domain_logits = self.domain_head(hidden_states).to(device) # Domain classification logits
 
         # Loss calculation
         validity_loss = None
         domain_loss = None
         if validity_labels is not None:
+            validity_labels = validity_labels.to(device)  # Sposta validity_labels sulla device corretta
             validity_loss_fn = nn.BCEWithLogitsLoss()
-            validity_loss = validity_loss_fn(validity_logits.squeeze(), validity_labels.float())
+            validity_loss = validity_loss_fn(validity_logits.squeeze(), validity_labels[:, 0].float().squeeze())
 
         if domain_labels is not None:
+            domain_labels = domain_labels.to(device)
             domain_loss_fn = nn.CrossEntropyLoss()
             domain_loss = domain_loss_fn(domain_logits, domain_labels)
 
