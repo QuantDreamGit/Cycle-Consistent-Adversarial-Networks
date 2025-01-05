@@ -98,7 +98,7 @@ class StarGANModel(nn.Module):
         loss_g_style = self.D(transferred_sentences, domain_labels=target_styles_tensor, device=self.device)["domain_loss"]
 
         # Cycle-consistency loss (optional)
-        reconstructed_sentences, _, loss_cycle = self.G(transferred_sentences, source_styles, device=self.device)
+        _, reconstructed_sentences, loss_cycle = self.G(transferred_sentences, source_styles, sentences, device=self.device)
 
         # Total generator loss
         total_loss_g = lambdas[0] * loss_g_adv + lambdas[1] * loss_g_style + lambdas[2] * loss_cycle
@@ -107,7 +107,7 @@ class StarGANModel(nn.Module):
                 comet_experiment.log_metric("Generator Adversarial Loss", lambdas[0] * loss_g_adv, step=training_step)
                 comet_experiment.log_metric("Generator Style Loss", lambdas[1] * loss_g_style, step=training_step)
                 comet_experiment.log_metric("Cycle Consistency Loss", lambdas[2] * loss_cycle, step=training_step)
-        loss_logging["Generator Adversarial Loss"].append(lambdas[0] * loss_g_adv.item())
+        loss_logging['Generator Adversarial Loss'].append(lambdas[0] * loss_g_adv.item())
         loss_logging["Generator Style Loss"].append(lambdas[1] * loss_g_style.item())
         loss_logging["Cycle Consistency Loss"].append(lambdas[2] * loss_cycle.item())
 
@@ -119,14 +119,14 @@ class StarGANModel(nn.Module):
 
         # Discriminator loss for real sentences
         labels_real_sentences = torch.column_stack((ones, zeros))  # Class index 0 = Real
-        _, loss_d_real = self.D(sentences, validity_labels=labels_real_sentences, device=self.device)
+        loss_d_real = self.D(sentences, validity_labels=labels_real_sentences, device=self.device)["validity_loss"]
 
         # Discriminator loss for fake sentences
         labels_fake_sentences = torch.column_stack((zeros, ones))  # Class index 1 = Fake
-        _, loss_d_fake = self.D(transferred_sentences.detach(), validity_labels=labels_fake_sentences, device=self.device)
+        loss_d_fake = self.D(transferred_sentences, validity_labels=labels_fake_sentences, device=self.device)["validity_loss"]
 
         # Style classification loss for discriminator
-        _, loss_d_style = self.D(sentences, domain_labels=source_styles, device=self.device)
+        loss_d_style = self.D(sentences, domain_labels=source_styles, device=self.device)["domain_loss"]
 
         # Total discriminator loss
         total_loss_d = lambdas[3] * (loss_d_real + loss_d_fake) + lambdas[4] * loss_d_style

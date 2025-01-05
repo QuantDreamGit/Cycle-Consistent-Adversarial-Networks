@@ -87,8 +87,8 @@ class GeneratorModel(nn.Module):
         print(f"Inputs: {inputs['input_ids'].shape}")
         print(f"Domain embeddings: {domain_embeds.shape}")
 
-        encoder_inputs = self.model.get_encoder()(input_ids=inputs["input_ids"], return_dict=True)
-        encoder_outputs = encoder_inputs.last_hidden_state.to(device) + domain_embeds.unsqueeze(1)
+        encoder_inputs = self.model.encoder(input_ids=inputs["input_ids"], return_dict=True)
+        encoder_outputs = encoder_inputs.last_hidden_state.to(device) + domain_embeds.unsqueeze(1).expand(-1, encoder_inputs.last_hidden_state.size(1), -1)
 
         if target_sentences is not None:
             # Tokenize target sentences for supervised learning

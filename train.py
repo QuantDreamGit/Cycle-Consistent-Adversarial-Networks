@@ -296,8 +296,11 @@ if args.comet_logging:
 else:
     experiment = None
 
-loss_logging = {'Cycle Loss A-B-A':[], 'Loss generator  A-B':[], 'Classifier-guided A-B':[], 'Loss D(A->B)':[],
-                'Cycle Loss B-A-B':[], 'Loss generator  B-A':[], 'Classifier-guided B-A':[], 'Loss D(B->A)':[]}
+loss_logging = {'Generator Adversarial Loss':[], 
+                'Generator Style Loss':[], 
+                'Cycle Consistency Loss':[], 
+                'Discriminator Real/Fake Loss':[],
+                'Discriminator Style Loss':[]}
 loss_logging['hyper_params'] = hyper_params
 
 ''' 

@@ -8,6 +8,7 @@ import torch
 import evaluate
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+from stargan_tst.models import DiscriminatorModel
 
 class Evaluator():
 
@@ -48,41 +49,58 @@ class Evaluator():
         return scores
     
 
-    def __compute_classif_metrics__(self, pred_A, pred_B):
-        device = self.cycleGAN.device
+    def __compute_classif_metrics__(self, pred_sentences, true_domains):
+        device = self.starGAN.device
         truncation, padding = 'longest_first', 'max_length'
+        
+        # Verifica se usare il classificatore pre-addestrato o il discriminatore
         if 'lambdas' not in vars(self.args) or self.args.lambdas[4] == 0 or self.args.pretrained_classifier_eval != self.args.pretrained_classifier_model:
+            # Classificatore pre-addestrato
             classifier = AutoModelForSequenceClassification.from_pretrained(self.args.pretrained_classifier_eval)
-            classifier_tokenizer = AutoTokenizer.from_pretrained(f'{self.args.pretrained_classifier_eval}tokenizer/')
+            classifier_tokenizer = AutoTokenizer.from_pretrained(self.args.pretrained_classifier_eval)
             classifier.to(device)
         else:
-            classifier = self.cycleGAN.Cls.model
-            classifier_tokenizer = self.cycleGAN.Cls.tokenizer
+            # Usa il discriminatore
+            classifier = self.starGAN.D  # DiscriminatorModel
+            classifier_tokenizer = classifier.tokenizer
+        
         classifier.eval()
 
-        y_pred, y_true = [], np.concatenate((np.full(len(pred_A), 0), np.full(len(pred_B), 1)))
+        y_pred, y_true = [], true_domains
 
-        for i in range(0, len(pred_A), self.args.batch_size):
-            batch_a = pred_A[i:i+self.args.batch_size]
-            inputs = classifier_tokenizer(batch_a, truncation=truncation, padding=padding, max_length=self.args.max_sequence_length, return_tensors="pt")
-            inputs = inputs.to(device)
+        # Elaborazione batch
+        for i in range(0, len(pred_sentences), self.args.batch_size):
+            batch_sentences = pred_sentences[i:i + self.args.batch_size]
+            
+            # Tokenizzazione delle frasi in batch
+            inputs = classifier_tokenizer(
+                batch_sentences,
+                truncation=truncation,
+                padding=padding,
+                max_length=self.args.max_sequence_length,
+                return_tensors="pt"
+            ).to(device)
+
             with torch.no_grad():
-                output = classifier(**inputs)
-            y_pred.extend(np.argmax(output.logits.cpu().numpy(), axis=1))
-        for i in range(0, len(pred_B), self.args.batch_size):
-            batch_b = pred_B[i:i+self.args.batch_size]
-            inputs = classifier_tokenizer(batch_b, truncation=truncation, padding=padding, max_length=self.args.max_sequence_length, return_tensors="pt")
-            inputs = inputs.to(device)
-            with torch.no_grad():
-                output = classifier(**inputs)
-            y_pred.extend(np.argmax(output.logits.cpu().numpy(), axis=1))
-        
+                # Forward pass
+                if isinstance(classifier, DiscriminatorModel):
+                    # Usa il discriminatore
+                    outputs = classifier(sentences=batch_sentences, device=device)
+                    domain_logits = outputs["domain_logits"]
+                else:
+                    # Usa il classificatore pre-addestrato
+                    outputs = classifier(**inputs)
+                    domain_logits = outputs.logits  # Logits per la classificazione del dominio
+                
+                # Calcolo delle predizioni
+                batch_predictions = torch.argmax(domain_logits, dim=1).cpu().tolist()
+                y_pred.extend(batch_predictions)
+                    
         acc = accuracy_score(y_true, y_pred)
         prec = precision_score(y_true, y_pred, average='macro', zero_division=0)
         rec = recall_score(y_true, y_pred, average='macro', zero_division=0)
         f1 = f1_score(y_true, y_pred, average='macro', zero_division=0)
         return acc, prec, rec, f1
-
 
     def run_eval_no_ref(self, epoch, current_training_step, phase, dataset):
         """
