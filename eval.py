@@ -54,7 +54,7 @@ class Evaluator():
         truncation, padding = 'longest_first', 'max_length'
         
         # Verifica se usare il classificatore pre-addestrato o il discriminatore
-        if 'lambdas' not in vars(self.args) or self.args.lambdas[4] == 0 or self.args.pretrained_classifier_eval != self.args.pretrained_classifier_model:
+        if 'lambdas' not in vars(self.args) or self.args.lambdas[4] == 0:
             # Classificatore pre-addestrato
             classifier = AutoModelForSequenceClassification.from_pretrained(self.args.pretrained_classifier_eval)
             classifier_tokenizer = AutoTokenizer.from_pretrained(self.args.pretrained_classifier_eval)
@@ -83,7 +83,7 @@ class Evaluator():
 
             with torch.no_grad():
                 # Forward pass
-                if isinstance(classifier, DiscriminatorModel):
+                if isinstance(classifier, DiscriminatorModel.DiscriminatorModel):
                     # Usa il discriminatore
                     outputs = classifier(sentences=batch_sentences, device=device)
                     domain_logits = outputs["domain_logits"]
@@ -108,7 +108,7 @@ class Evaluator():
         (sentence, original_style_code, new_style_code).
         """
         print(f'Start {phase}...')
-        self.cycleGAN.eval()  # set evaluation mode
+        self.starGAN.eval()  # set evaluation mode
 
         if self.args.comet_logging:
             if phase == 'validation':
@@ -126,7 +126,7 @@ class Evaluator():
             target_styles = [item[2] for item in batch]
 
             with torch.no_grad():
-                transferred = self.cycleGAN.transfer(sentences=sentences, target_styles=target_styles)
+                transferred = self.starGAN.transfer(sentences=sentences, target_styles=target_styles)
             
             real_sentences.extend(sentences)
             pred_sentences.extend(transferred)
@@ -148,7 +148,7 @@ class Evaluator():
         )
 
         # Calculate accuracy metrics
-        acc, _, _, _ = self.__compute_classif_metrics__(real_sentences, pred_sentences)
+        acc, _, _, _ = self.__compute_classif_metrics__(real_sentences, target_styles)
         acc_scaled = acc * 100
         avg_acc_bleu_self = (avg_bleu_self + acc_scaled) / 2
         avg_acc_bleu_self_geom = (avg_bleu_self * acc_scaled) ** 0.5
