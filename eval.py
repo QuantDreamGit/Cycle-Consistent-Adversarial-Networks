@@ -50,6 +50,9 @@ class Evaluator():
     
 
     def __compute_classif_metrics__(self, pred_sentences, true_domains):
+        if len(pred_sentences)!=len(true_domains):
+            print("Error size in input")
+
         device = self.starGAN.device
         truncation, padding = 'longest_first', 'max_length'
         
@@ -94,8 +97,18 @@ class Evaluator():
                 
                 # Calcolo delle predizioni
                 batch_predictions = torch.argmax(domain_logits, dim=1).cpu().tolist()
+                print(f"Predictions for batch: {batch_predictions}")
                 y_pred.extend(batch_predictions)
-                    
+        
+        print(f"Final size of y_pred: {len(y_pred)} (Expected: {len(pred_sentences)})")
+
+        # Convertire y_true in una lista se non lo è già
+        if isinstance(y_true, torch.Tensor):
+            y_true = y_true.cpu().numpy()
+        elif isinstance(y_true, list):
+            y_true = np.array(y_true)  # Per compatibilità con sklearn
+        y_pred = np.array(y_pred)  # y_pred è già su CPU in formato lista
+
         acc = accuracy_score(y_true, y_pred)
         prec = precision_score(y_true, y_pred, average='macro', zero_division=0)
         rec = recall_score(y_true, y_pred, average='macro', zero_division=0)
@@ -120,10 +133,7 @@ class Evaluator():
         scores_bleu_self, scores_r1_self, scores_r2_self, scores_rL_self = [], [], [], []
 
         for batch in dataset:
-            # Unpack the batch into components
-            sentences = [item[0] for item in batch]
-            original_styles = [item[1] for item in batch]
-            target_styles = [item[2] for item in batch]
+            sentences, source_styles, target_styles = batch
 
             with torch.no_grad():
                 transferred = self.starGAN.transfer(sentences=sentences, target_styles=target_styles)

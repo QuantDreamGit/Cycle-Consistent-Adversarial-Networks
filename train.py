@@ -235,7 +235,7 @@ if args.from_pretrained is not None:
     print('Generator e Discriminator pre-addestrati caricati correttamente')
 else:
     G = GeneratorModel(args.generator_model_tag, num_domains=args.n_styles, max_seq_length=args.max_sequence_length)
-    D = DiscriminatorModel.DiscriminatorModel.DiscriminatorModel(args.discriminator_model_tag, num_domains=args.n_styles, max_seq_length=args.max_sequence_length)
+    D = DiscriminatorModel.DiscriminatorModel(args.discriminator_model_tag, num_domains=args.n_styles, max_seq_length=args.max_sequence_length)
     print('Generator e Discriminator inizializzati con pesi casuali')
 
 ''' 

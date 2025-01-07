@@ -83,10 +83,6 @@ class GeneratorModel(nn.Module):
         domain_embeds = self.domain_embedding(domain_indices)
 
         # Integrate domain embeddings into encoder input
-        # Check tensor shapes before adding
-        print(f"Inputs: {inputs['input_ids'].shape}")
-        print(f"Domain embeddings: {domain_embeds.shape}")
-
         encoder_inputs = self.model.encoder(input_ids=inputs["input_ids"], return_dict=True)
         encoder_outputs = encoder_inputs.last_hidden_state.to(device) + domain_embeds.unsqueeze(1).expand(-1, encoder_inputs.last_hidden_state.size(1), -1)
 
