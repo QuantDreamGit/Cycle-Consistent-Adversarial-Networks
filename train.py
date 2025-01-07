@@ -345,7 +345,7 @@ for epoch in range(start_epoch, args.epochs):
                 evaluator.dummy_classif()
             elif args.bertscore:
                 evaluator.dummy_bscore()
-
+        '''
         # Valutazione durante l'addestramento
         if (
             (args.eval_strategy == "steps" and current_training_step % args.eval_steps == 0) or 
@@ -356,6 +356,7 @@ for epoch in range(start_epoch, args.epochs):
             else:
                 evaluator.run_eval_no_ref(epoch, current_training_step, 'validation', dl_eval)
             stargan.train()  # Ritorna in modalità train
+        '''
 
     # Valutazione alla fine dell'epoca
     if args.n_references is not None:

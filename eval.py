@@ -37,9 +37,9 @@ class Evaluator():
                     tmp_rouge1, tmp_rouge2, tmp_rougeL = [], [], []
                     for r in ref:
                         res = self.rouge.compute(predictions=[pred], references=[r], use_aggregator=False)
-                        tmp_rouge1.append(res['rouge1'][0].fmeasure)
-                        tmp_rouge2.append(res['rouge2'][0].fmeasure)
-                        tmp_rougeL.append(res['rougeL'][0].fmeasure)
+                        tmp_rouge1.append(res['rouge1'][0])
+                        tmp_rouge2.append(res['rouge2'][0])
+                        tmp_rougeL.append(res['rougeL'][0])
                     scores.append([max(tmp_rouge1), max(tmp_rouge2), max(tmp_rougeL)])
                 elif metric_name == 'bertscore':
                     res = self.bertscore.compute(predictions=[pred], references=[ref], lang=self.args.lang)
@@ -97,11 +97,8 @@ class Evaluator():
                 
                 # Calcolo delle predizioni
                 batch_predictions = torch.argmax(domain_logits, dim=1).cpu().tolist()
-                print(f"Predictions for batch: {batch_predictions}")
                 y_pred.extend(batch_predictions)
         
-        print(f"Final size of y_pred: {len(y_pred)} (Expected: {len(pred_sentences)})")
-
         # Convertire y_true in una lista se non lo è già
         if isinstance(y_true, torch.Tensor):
             y_true = y_true.cpu().numpy()
@@ -129,7 +126,7 @@ class Evaluator():
             elif phase == 'test':
                 context = self.experiment.test
 
-        real_sentences, pred_sentences = [], []
+        real_sentences, pred_sentences, all_target_styles = [], [], []
         scores_bleu_self, scores_r1_self, scores_r2_self, scores_rL_self = [], [], [], []
 
         for batch in dataset:
@@ -140,6 +137,7 @@ class Evaluator():
             
             real_sentences.extend(sentences)
             pred_sentences.extend(transferred)
+            all_target_styles.extend(target_styles)
             
             # Prepare for metric computation
             references = [[s] for s in sentences]
@@ -158,7 +156,7 @@ class Evaluator():
         )
 
         # Calculate accuracy metrics
-        acc, _, _, _ = self.__compute_classif_metrics__(real_sentences, target_styles)
+        acc, _, _, _ = self.__compute_classif_metrics__(real_sentences, all_target_styles)
         acc_scaled = acc * 100
         avg_acc_bleu_self = (avg_bleu_self + acc_scaled) / 2
         avg_acc_bleu_self_geom = (avg_bleu_self * acc_scaled) ** 0.5
