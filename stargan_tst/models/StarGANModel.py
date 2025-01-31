@@ -47,19 +47,18 @@ class StarGANModel(nn.Module):
 
     def get_optimizer_parameters(self):
         """
-        Restituisce i parametri del generatore e del discriminatore per l'ottimizzatore.
+        Returns the generator and discriminator parameters for the optimizer.
         """
-        # Include i parametri del generatore
+        # Includes generator parameters
         generator_params = list(self.G.parameters())
 
-        # Include i parametri del discriminatore: base_model, validity_head, domain_head
+        # Includes discriminator parameters: base_model, validity_head, domain_head
         discriminator_params = (
             list(self.D.base_model.parameters()) +
             list(self.D.validity_head.parameters()) +
             list(self.D.domain_head.parameters())
         )
 
-        # Combina e restituisce i parametri
         return generator_params + discriminator_params
 
     def training_step(
@@ -77,7 +76,8 @@ class StarGANModel(nn.Module):
 
         Args:
             sentences: Input sentences
-            domains: Source style indices for the sentences
+            source_styles: Source style indices for the sentences
+            target_styles: Target style indicise for the test style transfer
             lambdas: List of lambda values for weighting the losses
         """
 
@@ -97,7 +97,7 @@ class StarGANModel(nn.Module):
         target_styles_tensor = torch.tensor(target_styles, dtype=torch.long, device=self.device)
         loss_g_style = self.D(transferred_sentences, domain_labels=target_styles_tensor, device=self.device)["domain_loss"]
 
-        # Cycle-consistency loss (optional)
+        # Cycle-consistency loss
         _, reconstructed_sentences, loss_cycle = self.G(transferred_sentences, source_styles, sentences, device=self.device)
 
         # Total generator loss

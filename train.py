@@ -1,6 +1,6 @@
 from comet_ml import Experiment, ExistingExperiment
 
-from data.datasets import TextDataset
+from data.datasets import TextDataset, ParallelDataset
 from stargan_tst.models.StarGANModel import StarGANModel
 from stargan_tst.models.GeneratorModel import GeneratorModel
 from stargan_tst.models.DiscriminatorModel import DiscriminatorModel
@@ -44,7 +44,8 @@ parser.add_argument('--max_samples_eval',  type=int, dest="max_samples_eval",  d
 parser.add_argument('--nonparal_same_size', action='store_true', dest="nonparal_same_size",  default=False, help='Whether to reduce non-parallel data to same size.')
 
 parser.add_argument('--path_db_tr', type=str, dest="path_db_tr", help='Path to dataset for training.')
-parser.add_argument('--path_db_eval', type=str, dest="path_db_eval", help='Path to non-parallel dataset (style A) for evaluation.')
+parser.add_argument('--path_db_eval', type=str, dest="path_db_eval", help='Path to dataset for evaluation.')
+parser.add_argument('--path_ref', type=str, dest="path_ref", help='Path to folder containig references files.')
 parser.add_argument('--n_references',  type=int, dest="n_references",  default=None, help='Number of human references for evaluation.')
 
 parser.add_argument('--bertscore', action='store_true', dest="bertscore", default=True, help='Whether to compute BERTScore metric.')
@@ -109,6 +110,12 @@ for key, value in vars(args).items():
 lambdas = [float(l) for l in args.lambdas.split('|')]
 args.lambdas = lambdas
 
+''' 
+    ----- ----- ----- ----- ----- ----- ----- -----
+        Data import and preprocessing      
+    ----- ----- ----- ----- ----- ----- ----- -----
+'''
+
 # target styles randomly chosen
 def assign_target_style(source_style, n_styles):
     target_style = random.randint(0, n_styles-1)
@@ -117,64 +124,29 @@ def assign_target_style(source_style, n_styles):
     return target_style
     
 ds_train = TextDataset(file_path=args.path_db_tr, max_samples=args.max_samples_train, target_label_fn=assign_target_style, n_styles=args.n_styles)
-ds_eval = TextDataset(file_path=args.path_db_eval, max_samples=args.max_samples_eval, target_label_fn=assign_target_style, n_styles=args.n_styles)
+if args.n_references is not None:
+    #TO DO: Parallel dataset
+    ds_eval = ParallelDatatset()
+else :
+    ds_eval = TextDataset(file_path=args.path_db_eval, max_samples=args.max_samples_eval, target_label_fn=assign_target_style, n_styles=args.n_styles)
 
 print(f"Training data  : {len(ds_train)}")
 print(f"Evaluation data  : {len(ds_eval)}")
 
-'''DA CAPIRE A COSA SERVA IL PARALLEL
-
-if args.n_references is not None:
-    parallel_ds_evalAB = ParallelRefDataset(dataset_format='line_file',
-                                            style_src=style_a,
-                                            style_ref=style_b,
-                                            dataset_path_src=args.path_paral_A_eval,
-                                            dataset_path_ref=args.path_paral_eval_ref,
-                                            n_ref=args.n_references,
-                                            separator_src='\n',
-                                            separator_ref='\n',
-                                            max_dataset_samples=args.max_samples_eval)
-    
-    parallel_ds_evalBA = ParallelRefDataset(dataset_format='line_file',
-                                            style_src=style_b,
-                                            style_ref=style_a,
-                                            dataset_path_src=args.path_paral_B_eval,
-                                            dataset_path_ref=args.path_paral_eval_ref,
-                                            n_ref=args.n_references,
-                                            separator_src='\n',
-                                            separator_ref='\n',
-                                            max_dataset_samples=args.max_samples_eval)
-else:
-    mono_ds_a_eval = MonostyleDataset(dataset_format="line_file",
-                                      style=style_a,
-                                      dataset_path=args.path_mono_A_eval,
-                                      separator='\n',
-                                      max_dataset_samples=args.max_samples_eval)
-
-    mono_ds_b_eval = MonostyleDataset(dataset_format="line_file",
-                                      style=style_b,
-                                      dataset_path=args.path_mono_B_eval,
-                                      separator='\n',
-                                      max_dataset_samples=args.max_samples_eval)
-
-print (f"Mono A  : {len(mono_ds_a)}")
-print (f"Mono B  : {len(mono_ds_b)}")
-if args.n_references is not None:
-    print (f"Parallel AB eval: {len(parallel_ds_evalAB)}")
-    print (f"Parallel BA eval: {len(parallel_ds_evalBA)}")
-else:
-    print (f"Mono A eval: {len(mono_ds_a_eval)}")
-    print (f"Mono B eval: {len(mono_ds_b_eval)}")
-print()
-
-'''
 dataloader = DataLoader(ds_train,
                         batch_size=args.batch_size,
                         shuffle=args.shuffle,
                         num_workers=args.num_workers,
                         pin_memory=args.pin_memory)
-
-dl_eval = DataLoader(ds_eval,
+if args.n_references is not None:
+    dl_eval = DataLoader(ds_eval,
+                        batch_size=args.batch_size,
+                        shuffle=False,
+                        num_workers=args.num_workers,
+                        pin_memory=args.pin_memory,
+                        collate_fn=ParallelDataset.customCollate) #TO DO
+else :
+    dl_eval = DataLoader(ds_eval,
                     batch_size=args.batch_size,
                     shuffle=False,
                     num_workers=args.num_workers,
@@ -185,44 +157,6 @@ del ds_train, ds_eval
 print (f"Training lenght (batches): {len(dataloader)}")
 print (f"Evaluation lenght (batches): {len(dl_eval)}")
 
-'''
-if args.n_references is not None:
-    parallel_dl_evalAB = DataLoader(parallel_ds_evalAB,
-                                    batch_size=args.batch_size,
-                                    shuffle=False,
-                                    num_workers=args.num_workers,
-                                    pin_memory=args.pin_memory,
-                                    collate_fn=ParallelRefDataset.customCollate)
-    
-    parallel_dl_evalBA = DataLoader(parallel_ds_evalBA,
-                                    batch_size=args.batch_size,
-                                    shuffle=False,
-                                    num_workers=args.num_workers,
-                                    pin_memory=args.pin_memory,
-                                    collate_fn=ParallelRefDataset.customCollate)
-    del parallel_ds_evalAB, parallel_ds_evalBA
-else:
-    mono_dl_a_eval = DataLoader(mono_ds_a_eval,
-                                batch_size=args.batch_size,
-                                shuffle=False,
-                                num_workers=args.num_workers,
-                                pin_memory=args.pin_memory)
-
-    mono_dl_b_eval = DataLoader(mono_ds_b_eval,
-                                batch_size=args.batch_size,
-                                shuffle=False,
-                                num_workers=args.num_workers,
-                                pin_memory=args.pin_memory)
-    del mono_ds_a_eval, mono_ds_b_eval
-
-if args.n_references is not None:
-    print (f"Parallel AB eval (batches): {len(parallel_dl_evalAB)}")
-    print (f"Parallel BA eval (batches): {len(parallel_dl_evalBA)}")
-else:
-    print (f"Mono A eval (batches): {len(mono_dl_a_eval)}")
-    print (f"Mono B eval (batches): {len(mono_dl_b_eval)}")
-'''
-
 ''' 
     ----- ----- ----- ----- ----- ----- ----- -----
         Instantiate Generator and Discriminator      
@@ -232,11 +166,11 @@ else:
 if args.from_pretrained is not None:
     G = GeneratorModel(args.generator_model_tag, f'{args.from_pretrained}Generator/', num_domains=args.n_styles, max_seq_length=args.max_sequence_length)
     D = DiscriminatorModel.DiscriminatorModel(args.discriminator_model_tag, f'{args.from_pretrained}Discriminator/', num_domains=args.n_styles, max_seq_length=args.max_sequence_length)
-    print('Generator e Discriminator pre-addestrati caricati correttamente')
+    print('Generator e Discriminator pre-trained correctly loaded')
 else:
     G = GeneratorModel(args.generator_model_tag, num_domains=args.n_styles, max_seq_length=args.max_sequence_length)
     D = DiscriminatorModel.DiscriminatorModel(args.discriminator_model_tag, num_domains=args.n_styles, max_seq_length=args.max_sequence_length)
-    print('Generator e Discriminator inizializzati con pesi casuali')
+    print('Generator e Discriminator initialized with random weight')
 
 ''' 
     ----- ----- ----- ----- ----- ----- ----- -----
@@ -332,20 +266,20 @@ for epoch in range(start_epoch, args.epochs):
             training_step = current_training_step
         )
 
-        # Gestione dell'ottimizzatore e scheduler
         optimizer.step()
         lr_scheduler.step()
         optimizer.zero_grad()
         progress_bar.update(1)
         current_training_step += 1
 
-        # Dummy classification metrics/BERTScore computation
+        # Dummy classification metrics/BERTScore computation (TO DO: Is it necessary?)
+        '''
         if current_training_step == 5:
             if args.n_references is None:
                 evaluator.dummy_classif()
             elif args.bertscore:
                 evaluator.dummy_bscore()
-        '''
+
         # Valutazione durante l'addestramento
         if (
             (args.eval_strategy == "steps" and current_training_step % args.eval_steps == 0) or 
@@ -358,15 +292,15 @@ for epoch in range(start_epoch, args.epochs):
             stargan.train()  # Ritorna in modalità train
         '''
 
-    # Valutazione alla fine dell'epoca
+    # Evaluation at the end of an epoch
     if args.n_references is not None:
-        evaluator.run_eval_no_ref(epoch, current_training_step, 'validation', dl_eval) #DA MODIFICARE CON RUN_EVAL_REF
+        evaluator.run_eval_ref(epoch, current_training_step, 'validation', dl_eval) #TO DO: run_eval_ref
     else:
         evaluator.run_eval_no_ref(epoch, current_training_step, 'validation', dl_eval)
         
-    # Salvataggio dei modelli
+    # Saving 
     if epoch % args.save_steps == 0:
-        stargan.save_models(f"{args.save_base_folder}epoch_{epoch}/")  # Cambia da cycleGAN a stargan
+        stargan.save_models(f"{args.save_base_folder}epoch_{epoch}/")
         checkpoint = {
             'epoch': epoch + 1,
             'training_step': current_training_step,
@@ -380,7 +314,7 @@ for epoch in range(start_epoch, args.epochs):
             os.remove(f"{args.save_base_folder}loss.pickle")
         pickle.dump(loss_logging, open(f"{args.save_base_folder}loss.pickle", 'wb'))
 
-    # Controllo per terminare l'addestramento
+    # Check to stop the training 
     if args.control_file is not None and os.path.exists(args.control_file):
         with open(args.control_file, 'r') as f:
             if f.read() == 'STOP':
@@ -388,6 +322,6 @@ for epoch in range(start_epoch, args.epochs):
                 os.remove(args.control_file)
                 break
 
-    stargan.train()  # Torna in modalità train alla fine dell'epoca
+    stargan.train()
 
 print('End training...')

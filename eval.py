@@ -56,14 +56,12 @@ class Evaluator():
         device = self.starGAN.device
         truncation, padding = 'longest_first', 'max_length'
         
-        # Verifica se usare il classificatore pre-addestrato o il discriminatore
+        # Check whether to use pre-trained classifier or discriminator
         if 'lambdas' not in vars(self.args) or self.args.lambdas[4] == 0:
-            # Classificatore pre-addestrato
             classifier = AutoModelForSequenceClassification.from_pretrained(self.args.pretrained_classifier_eval)
             classifier_tokenizer = AutoTokenizer.from_pretrained(self.args.pretrained_classifier_eval)
             classifier.to(device)
         else:
-            # Usa il discriminatore
             classifier = self.starGAN.D  # DiscriminatorModel
             classifier_tokenizer = classifier.tokenizer
         
@@ -71,11 +69,11 @@ class Evaluator():
 
         y_pred, y_true = [], true_domains
 
-        # Elaborazione batch
+        # Batch Processing
         for i in range(0, len(pred_sentences), self.args.batch_size):
             batch_sentences = pred_sentences[i:i + self.args.batch_size]
             
-            # Tokenizzazione delle frasi in batch
+            # Batch Sentence Tokenization
             inputs = classifier_tokenizer(
                 batch_sentences,
                 truncation=truncation,
@@ -87,24 +85,22 @@ class Evaluator():
             with torch.no_grad():
                 # Forward pass
                 if isinstance(classifier, DiscriminatorModel.DiscriminatorModel):
-                    # Usa il discriminatore
                     outputs = classifier(sentences=batch_sentences, device=device)
                     domain_logits = outputs["domain_logits"]
                 else:
-                    # Usa il classificatore pre-addestrato
                     outputs = classifier(**inputs)
-                    domain_logits = outputs.logits  # Logits per la classificazione del dominio
+                    domain_logits = outputs.logits  
                 
-                # Calcolo delle predizioni
+                # Calculating predictions
                 batch_predictions = torch.argmax(domain_logits, dim=1).cpu().tolist()
                 y_pred.extend(batch_predictions)
         
-        # Convertire y_true in una lista se non lo è già
+        # Convert y_true to a list if it is not already
         if isinstance(y_true, torch.Tensor):
             y_true = y_true.cpu().numpy()
         elif isinstance(y_true, list):
-            y_true = np.array(y_true)  # Per compatibilità con sklearn
-        y_pred = np.array(y_pred)  # y_pred è già su CPU in formato lista
+            y_true = np.array(y_true)  
+        y_pred = np.array(y_pred)  
 
         acc = accuracy_score(y_true, y_pred)
         prec = precision_score(y_true, y_pred, average='macro', zero_division=0)
@@ -211,6 +207,7 @@ class Evaluator():
         print(f'End {phase}...')
 
     
+    #TO DO: this function need to be adapted to StarGAN
     def run_eval_ref(self, epoch, current_training_step, phase, parallel_dl_evalAB, parallel_dl_evalBA):
         print(f'Start {phase}...')
         self.cycleGAN.eval() # set evaluation mode

@@ -6,31 +6,17 @@ It includes the Python package to train and test the CycleGAN architecture for T
 ## Installation
 The following command will clone the project:
 ```
-git clone https://github.com/gallipoligiuseppe/TST-CycleGAN.git
+git clone -b StarGAN --single-branch https://github.com/QuantDreamGit/NLP-project
 ```
 
 To install the required libraries and dependencies, you can refer to the `env.yml` file.
 
-Before experimenting, you can create a virtual environment for the project using Conda.
-```
-conda create -f env.yml -n cyclegan_tst 
-conda activate cyclegan_tst
-```
-
-The installation should also cover all the dependencies. If you find any missing dependency, please let us know by opening an issue.
-
 ## Usage
-The package provides the scripts to implement, train and test the CycleGAN architecture for Text Style Transfer described in the paper.
+The package provides the scripts to implement, train and test the StarGAN architecture for Text Style Transfer described in the paper.
 
-Specifically, we focus on *formality* (informal ↔ formal) and *sentiment* (negative ↔ positive) transfer tasks.
+Specifically, we focus on *formality* and *sentiment* transfer tasks.
 
 ## Data
-### Formality transfer
-According to the dataset license, you can request access to the [GYAFC](https://aclanthology.org/N18-1012/) dataset following the steps described in its official [repository](https://github.com/raosudha89/GYAFC-corpus).
-
-Once you have gained access, put it into the `family_relationships` and `entertainment_music` directories for the *Family & Relationships* and *Entertainment & Music* domains, respectively, under the `data/GYAFC` folder. Please name the files as `[train|dev|test].[0|1].txt`, where 0 is for informal style and 1 is for formal style.
-
-We could provide access to *mixed-style* data we use in our work after gaining access to the GYAFC dataset and verifying the dataset license.
 
 ### Sentiment transfer
 We use the [Yelp](https://papers.nips.cc/paper_files/paper/2017/hash/2d2c8394e31101a261abf1784302bf75-Abstract.html) dataset following the same splits as in [Li et al.](https://aclanthology.org/N18-1169/) available in the official [repository](https://github.com/lijuncen/Sentiment-and-Style-Transfer). Put it into the `data/yelp` folder and please name the files as `[train|dev|test].[0|1].txt`, where 0 is for negative sentiment and 1 is for positive sentiment.

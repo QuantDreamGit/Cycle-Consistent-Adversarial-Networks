@@ -96,7 +96,7 @@ class DiscriminatorModel(nn.Module):
         validity_loss = None
         domain_loss = None
         if validity_labels is not None:
-            validity_labels = validity_labels.to(device)  # Sposta validity_labels sulla device corretta
+            validity_labels = validity_labels.to(device)  
             validity_loss_fn = nn.BCEWithLogitsLoss()
             validity_loss = validity_loss_fn(validity_logits.squeeze(), validity_labels[:, 0].float().squeeze())
 
