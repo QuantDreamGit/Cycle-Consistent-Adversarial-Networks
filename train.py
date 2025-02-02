@@ -1,6 +1,6 @@
 from comet_ml import Experiment, ExistingExperiment
 
-from data.datasets import TextDataset, ParallelDataset
+from data.datasets import TextDataset, ParallelRefDataset
 from stargan_tst.models.StarGANModel import StarGANModel
 from stargan_tst.models.GeneratorModel import GeneratorModel
 from stargan_tst.models.DiscriminatorModel import DiscriminatorModel
@@ -45,9 +45,9 @@ parser.add_argument('--nonparal_same_size', action='store_true', dest="nonparal_
 
 parser.add_argument('--path_db_tr', type=str, dest="path_db_tr", help='Path to dataset for training.')
 parser.add_argument('--path_db_eval', type=str, dest="path_db_eval", help='Path to dataset for evaluation.')
-parser.add_argument('--path_ref', type=str, dest="path_ref", help='Path to folder containig references files.')
+parser.add_argument('--path_to_references', type=str, nargs='+', dest="path_to_references", help='List of paths to reference files, one per style.')
 parser.add_argument('--n_references',  type=int, dest="n_references",  default=None, help='Number of human references for evaluation.')
-
+parser.add_argument('--lowercase_ref', action='store_true', dest="lowercase_ref", default=False, help='Whether to lowercase references.')
 parser.add_argument('--bertscore', action='store_true', dest="bertscore", default=True, help='Whether to compute BERTScore metric.')
 
 parser.add_argument('--max_sequence_length', type=int,  dest="max_sequence_length", default=64, help='Max sequence length')
@@ -110,12 +110,6 @@ for key, value in vars(args).items():
 lambdas = [float(l) for l in args.lambdas.split('|')]
 args.lambdas = lambdas
 
-''' 
-    ----- ----- ----- ----- ----- ----- ----- -----
-        Data import and preprocessing      
-    ----- ----- ----- ----- ----- ----- ----- -----
-'''
-
 # target styles randomly chosen
 def assign_target_style(source_style, n_styles):
     target_style = random.randint(0, n_styles-1)
@@ -124,11 +118,11 @@ def assign_target_style(source_style, n_styles):
     return target_style
     
 ds_train = TextDataset(file_path=args.path_db_tr, max_samples=args.max_samples_train, target_label_fn=assign_target_style, n_styles=args.n_styles)
-if args.n_references is not None:
-    #TO DO: Parallel dataset
-    ds_eval = ParallelDatatset()
-else :
+
+if args.path_to_references is None:
     ds_eval = TextDataset(file_path=args.path_db_eval, max_samples=args.max_samples_eval, target_label_fn=assign_target_style, n_styles=args.n_styles)
+else:
+    ds_eval = ParallelRefDataset(dataset_path_src=args.path_db_eval, dataset_path_ref=args.path_to_references, n_ref=args.n_references, max_dataset_samples=args.max_samples_eval)
 
 print(f"Training data  : {len(ds_train)}")
 print(f"Evaluation data  : {len(ds_eval)}")
@@ -138,19 +132,20 @@ dataloader = DataLoader(ds_train,
                         shuffle=args.shuffle,
                         num_workers=args.num_workers,
                         pin_memory=args.pin_memory)
-if args.n_references is not None:
+
+if args.path_to_references is None:
+    dl_eval = DataLoader(ds_eval,
+                        batch_size=args.batch_size,
+                        shuffle=False,
+                        num_workers=args.num_workers,
+                        pin_memory=args.pin_memory)
+else:
     dl_eval = DataLoader(ds_eval,
                         batch_size=args.batch_size,
                         shuffle=False,
                         num_workers=args.num_workers,
                         pin_memory=args.pin_memory,
-                        collate_fn=ParallelDataset.customCollate) #TO DO
-else :
-    dl_eval = DataLoader(ds_eval,
-                    batch_size=args.batch_size,
-                    shuffle=False,
-                    num_workers=args.num_workers,
-                    pin_memory=args.pin_memory)
+                        collate_fn = ParallelRefDataset.customCollate)
 
 del ds_train, ds_eval
 
@@ -166,11 +161,11 @@ print (f"Evaluation lenght (batches): {len(dl_eval)}")
 if args.from_pretrained is not None:
     G = GeneratorModel(args.generator_model_tag, f'{args.from_pretrained}Generator/', num_domains=args.n_styles, max_seq_length=args.max_sequence_length)
     D = DiscriminatorModel.DiscriminatorModel(args.discriminator_model_tag, f'{args.from_pretrained}Discriminator/', num_domains=args.n_styles, max_seq_length=args.max_sequence_length)
-    print('Generator e Discriminator pre-trained correctly loaded')
+    print('Generator e Discriminator pre-addestrati caricati correttamente')
 else:
     G = GeneratorModel(args.generator_model_tag, num_domains=args.n_styles, max_seq_length=args.max_sequence_length)
     D = DiscriminatorModel.DiscriminatorModel(args.discriminator_model_tag, num_domains=args.n_styles, max_seq_length=args.max_sequence_length)
-    print('Generator e Discriminator initialized with random weight')
+    print('Generator e Discriminator inizializzati con pesi casuali')
 
 ''' 
     ----- ----- ----- ----- ----- ----- ----- -----
@@ -272,14 +267,13 @@ for epoch in range(start_epoch, args.epochs):
         progress_bar.update(1)
         current_training_step += 1
 
-        # Dummy classification metrics/BERTScore computation (TO DO: Is it necessary?)
-        '''
+        # Dummy classification metrics/BERTScore computation
         if current_training_step == 5:
             if args.n_references is None:
                 evaluator.dummy_classif()
             elif args.bertscore:
                 evaluator.dummy_bscore()
-
+        '''
         # Valutazione durante l'addestramento
         if (
             (args.eval_strategy == "steps" and current_training_step % args.eval_steps == 0) or 
@@ -294,11 +288,11 @@ for epoch in range(start_epoch, args.epochs):
 
     # Evaluation at the end of an epoch
     if args.n_references is not None:
-        evaluator.run_eval_ref(epoch, current_training_step, 'validation', dl_eval) #TO DO: run_eval_ref
+        evaluator.run_eval_ref(epoch, current_training_step, 'validation', dl_eval) 
     else:
         evaluator.run_eval_no_ref(epoch, current_training_step, 'validation', dl_eval)
         
-    # Saving 
+    # Save the model
     if epoch % args.save_steps == 0:
         stargan.save_models(f"{args.save_base_folder}epoch_{epoch}/")
         checkpoint = {
@@ -314,7 +308,7 @@ for epoch in range(start_epoch, args.epochs):
             os.remove(f"{args.save_base_folder}loss.pickle")
         pickle.dump(loss_logging, open(f"{args.save_base_folder}loss.pickle", 'wb'))
 
-    # Check to stop the training 
+    # Control to end training
     if args.control_file is not None and os.path.exists(args.control_file):
         with open(args.control_file, 'r') as f:
             if f.read() == 'STOP':
@@ -322,6 +316,6 @@ for epoch in range(start_epoch, args.epochs):
                 os.remove(args.control_file)
                 break
 
-    stargan.train()
+    stargan.train()  
 
 print('End training...')
