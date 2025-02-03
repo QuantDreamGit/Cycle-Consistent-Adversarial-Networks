@@ -46,7 +46,6 @@ parser.add_argument('--nonparal_same_size', action='store_true', dest="nonparal_
 parser.add_argument('--path_db_tr', type=str, dest="path_db_tr", help='Path to dataset for training.')
 parser.add_argument('--path_db_eval', type=str, dest="path_db_eval", help='Path to dataset for evaluation.')
 parser.add_argument('--path_to_references', type=str, nargs='+', dest="path_to_references", help='List of paths to reference files, one per style.')
-parser.add_argument('--n_references',  type=int, dest="n_references",  default=None, help='Number of human references for evaluation.')
 parser.add_argument('--lowercase_ref', action='store_true', dest="lowercase_ref", default=False, help='Whether to lowercase references.')
 parser.add_argument('--bertscore', action='store_true', dest="bertscore", default=True, help='Whether to compute BERTScore metric.')
 
@@ -122,7 +121,7 @@ ds_train = TextDataset(file_path=args.path_db_tr, max_samples=args.max_samples_t
 if args.path_to_references is None:
     ds_eval = TextDataset(file_path=args.path_db_eval, max_samples=args.max_samples_eval, target_label_fn=assign_target_style, n_styles=args.n_styles)
 else:
-    ds_eval = ParallelRefDataset(dataset_path_src=args.path_db_eval, dataset_path_ref=args.path_to_references, n_ref=args.n_references, max_dataset_samples=args.max_samples_eval)
+    ds_eval = ParallelDataset(validation_file=args.path_db_eval, style_files=args.path_to_references, max_dataset_samples=args.max_samples_eval)
 
 print(f"Training data  : {len(ds_train)}")
 print(f"Evaluation data  : {len(ds_eval)}")
@@ -267,13 +266,14 @@ for epoch in range(start_epoch, args.epochs):
         progress_bar.update(1)
         current_training_step += 1
 
+        '''
         # Dummy classification metrics/BERTScore computation
         if current_training_step == 5:
             if args.n_references is None:
                 evaluator.dummy_classif()
             elif args.bertscore:
                 evaluator.dummy_bscore()
-        '''
+    
         # Valutazione durante l'addestramento
         if (
             (args.eval_strategy == "steps" and current_training_step % args.eval_steps == 0) or 
