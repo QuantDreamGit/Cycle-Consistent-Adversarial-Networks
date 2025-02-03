@@ -1,6 +1,6 @@
 from comet_ml import Experiment, ExistingExperiment
 
-from data.datasets import TextDataset, ParallelRefDataset
+from data.datasets import TextDataset, ParallelDataset
 from stargan_tst.models.StarGANModel import StarGANModel
 from stargan_tst.models.GeneratorModel import GeneratorModel
 from stargan_tst.models.DiscriminatorModel import DiscriminatorModel
@@ -144,7 +144,7 @@ else:
                         shuffle=False,
                         num_workers=args.num_workers,
                         pin_memory=args.pin_memory,
-                        collate_fn = ParallelRefDataset.customCollate)
+                        collate_fn = ParallelDataset.customCollate)
 
 del ds_train, ds_eval
 
@@ -287,7 +287,7 @@ for epoch in range(start_epoch, args.epochs):
         '''
 
     # Evaluation at the end of an epoch
-    if args.n_references is not None:
+    if args.path_to_references is not None:
         evaluator.run_eval_ref(epoch, current_training_step, 'validation', dl_eval) 
     else:
         evaluator.run_eval_no_ref(epoch, current_training_step, 'validation', dl_eval)
