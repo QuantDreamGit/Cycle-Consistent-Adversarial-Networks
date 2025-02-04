@@ -251,7 +251,7 @@ for epoch in range(start_epoch, args.epochs):
     for batch in dataloader:
         sentences, source_style, target_style = batch
 
-        loss_dict = stargan.training_step(
+        stargan.training_step(
             sentences=sentences,
             source_styles = source_style,
             target_styles = target_style,
