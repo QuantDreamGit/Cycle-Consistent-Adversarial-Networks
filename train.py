@@ -21,6 +21,7 @@ from torch.optim import AdamW
 from transformers import get_scheduler
 
 logging.basicConfig(level=logging.INFO)
+logging.getLogger('absl').setLevel(logging.WARNING)
 
 SEED = 42
 torch.manual_seed(SEED)
