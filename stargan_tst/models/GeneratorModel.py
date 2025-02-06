@@ -140,12 +140,12 @@ class GeneratorModel(nn.Module):
         domain_indices = torch.tensor(target_domains, dtype=torch.long, device=device)
         domain_embeds = self.domain_embedding(domain_indices)
 
-        encoder_inputs = self.model.get_encoder()(inputs["input_ids"], return_dict=True)
-        encoder_outputs = encoder_inputs.last_hidden_state + domain_embeds.unsqueeze(1)
+        encoder_inputs = self.model.encoder(input_ids=inputs["input_ids"], return_dict=True)
+        encoder_outputs = encoder_inputs.last_hidden_state.to(device) + domain_embeds.unsqueeze(1).expand(-1, encoder_inputs.last_hidden_state.size(1), -1)
 
         generated_ids = self.model.generate(inputs_embeds=encoder_outputs, max_length=self.max_seq_length)
         transferred_sentences = [self.tokenizer.decode(t, skip_special_tokens=True) for t in generated_ids]
-
+        
         return transferred_sentences
 
     def save_model(self, path: Union[str]):
