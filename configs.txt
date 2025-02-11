@@ -1,0 +1,123 @@
+ORIGINAL ---------------------------------------------------------------------------------------------------------------
+CUDA_VISIBLE_DEVICES=0 python train.py \
+    --style_a=neg --style_b=pos --lang=en \
+    --path_mono_A=./data/yelp/train.0.txt \
+    --path_mono_B=./data/yelp/train.1.txt \
+    --path_paral_A_eval=./data/yelp/dev.0.txt \
+    --path_paral_B_eval=./data/yelp/dev.1.txt \
+    --path_paral_eval_ref=./data/yelp/references/test/ \
+    --generator_model_tag=google-t5/t5-small \
+    --discriminator_model_tag=distilbert-base-cased \
+    --pretrained_classifier_model=ggallipoli/sentiment_classifier_yelp \
+    --n_references=4 \
+    --lambdas="10|1|1|1|1" \
+    --epochs=10 \
+    --learning_rate=1e-3 \
+    --max_sequence_length=64 \
+    --batch_size=64 \
+    --num_workers=2 \
+    --save_base_folder=./ckpts_yelp/ \
+    --save_steps=1 \
+    --eval_strategy=epochs \
+    --eval_steps=1 \
+    --pin_memory \
+    --max_samples_train=40000 \
+    --shuffle \
+    --use_cuda_if_available
+
+CUDA_VISIBLE_DEVICES=0 python test.py
+    --style_a=neg --style_b=pos --lang=en \
+    --path_paral_A_test=./data/yelp/test.0.txt \
+    --path_paral_B_test=./data/yelp/test.1.txt \
+    --path_paral_test_ref=./data/yelp/references/test/ \
+    --n_references=4 \
+    --generator_model_tag=t5-small \
+    --discriminator_model_tag=distilbert-base-cased \
+    --pretrained_classifier_eval=ggallipoli/sentiment_classifier_yelp \
+    --from_pretrained=./ckpts_yelp/ \
+    --max_sequence_length=64 \
+    --batch_size=256 \
+    --num_workers=2 \
+    --use_cuda_if_available
+
+AUGMENTED --------------------------------------------------------------------------------------------------------------
+CUDA_VISIBLE_DEVICES=0 python train.py \
+    --style_a=neg --style_b=pos --lang=en \
+    --path_mono_A=./data/yelp/train_augmented.0.txt \
+    --path_mono_B=./data/yelp/train_augmented.1.txt \
+    --path_paral_A_eval=./data/yelp/dev.0.txt \
+    --path_paral_B_eval=./data/yelp/dev.1.txt \
+    --path_paral_eval_ref=./data/yelp/references/test/ \
+    --generator_model_tag=google-t5/t5-small \
+    --discriminator_model_tag=distilbert-base-cased \
+    --pretrained_classifier_model=ggallipoli/sentiment_classifier_yelp \
+    --n_references=4 \
+    --lambdas="10|1|1|1|1" \
+    --epochs=10 \
+    --learning_rate=1e-3 \
+    --max_sequence_length=64 \
+    --batch_size=64 \
+    --num_workers=2 \
+    --save_base_folder=./ckpts_yelp_augmented/ \
+    --save_steps=1 \
+    --eval_strategy=epochs \
+    --eval_steps=1 \
+    --pin_memory \
+    --shuffle \
+    --use_cuda_if_available
+
+CUDA_VISIBLE_DEVICES=0 python test.py
+    --style_a=neg --style_b=pos --lang=en \
+    --path_paral_A_test=./data/yelp/test.0.txt \
+    --path_paral_B_test=./data/yelp/test.1.txt \
+    --path_paral_test_ref=./data/yelp/references/test/ \
+    --n_references=4 \
+    --generator_model_tag=t5-small \
+    --discriminator_model_tag=distilbert-base-cased \
+    --pretrained_classifier_eval=ggallipoli/sentiment_classifier_yelp \
+    --from_pretrained=./ckpts_yelp/ \
+    --max_sequence_length=64 \
+    --batch_size=256 \
+    --num_workers=2 \
+    --use_cuda_if_available
+
+SYNTHETIC --------------------------------------------------------------------------------------------------------------
+CUDA_VISIBLE_DEVICES=0 python train.py \
+    --style_a=neg --style_b=pos --lang=en \
+    --path_mono_A=./data/yelp/train_synthetic.0.txt \
+    --path_mono_B=./data/yelp/train_synthetic.1.txt \
+    --path_paral_A_eval=./data/yelp/dev.0.txt \
+    --path_paral_B_eval=./data/yelp/dev.1.txt \
+    --path_paral_eval_ref=./data/yelp/references/test/ \
+    --generator_model_tag=google-t5/t5-small \
+    --discriminator_model_tag=distilbert-base-cased \
+    --pretrained_classifier_model=ggallipoli/sentiment_classifier_yelp \
+    --n_references=4 \
+    --lambdas="10|1|1|1|1" \
+    --epochs=10 \
+    --learning_rate=1e-3 \
+    --max_sequence_length=64 \
+    --batch_size=64 \
+    --num_workers=2 \
+    --save_base_folder=./ckpts_yelp_synthetic/ \
+    --save_steps=1 \
+    --eval_strategy=epochs \
+    --eval_steps=1 \
+    --pin_memory \
+    --shuffle \
+    --use_cuda_if_available
+
+CUDA_VISIBLE_DEVICES=0 python test.py
+    --style_a=neg --style_b=pos --lang=en \
+    --path_paral_A_test=./data/yelp/test.0.txt \
+    --path_paral_B_test=./data/yelp/test.1.txt \
+    --path_paral_test_ref=./data/yelp/references/test/ \
+    --n_references=4 \
+    --generator_model_tag=t5-small \
+    --discriminator_model_tag=distilbert-base-cased \
+    --pretrained_classifier_eval=ggallipoli/sentiment_classifier_yelp \
+    --from_pretrained=./ckpts_yelp/ \
+    --max_sequence_length=64 \
+    --batch_size=256 \
+    --num_workers=2 \
+    --use_cuda_if_available
