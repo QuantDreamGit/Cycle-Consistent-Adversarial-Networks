@@ -141,7 +141,8 @@ class StarGANModel(nn.Module):
             loss_d_fake = self.D(transferred_sentences, validity_labels=labels_fake_sentences, device=self.device)["validity_loss"]
     
             # Style classification loss for discriminator
-            loss_d_style = self.D(sentences_filtered, domain_labels=source_styles, device=self.device)["domain_loss"]
+            source_styles_tensor = torch.tensor(source_styles, dtype=torch.long, device=self.device)
+            loss_d_style = self.D(sentences_filtered, domain_labels=source_styles_tensor, device=self.device)["domain_loss"]
     
             # Total discriminator loss
             total_loss_d = lambdas[3] * (loss_d_real + loss_d_fake) + lambdas[4] * loss_d_style
