@@ -66,7 +66,7 @@ CUDA_VISIBLE_DEVICES=0 python NLP-project/train.py --n_styles=3 --lang=en \
 <a rel="license" href="http://creativecommons.org/licenses/by-nc-sa/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by-nc-sa/4.0/88x31.png" /></a><br />This work is licensed under the <a rel="license" href="http://creativecommons.org/licenses/by-nc-sa/4.0/">Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License</a>.
 
 ## Authors
-[Matteo Tomatis](), [Giuseppe Prioli](), [Federico XXX]()
+[Matteo Tomatis](), [Giuseppe Priolo](), [Federico XXX]()
 
 ### Corresponding author
 For any questions about the content of the paper or the implementation, you can contact us at: `s[DOT]334271[AT]studenti[DOT]polito[DOT]it`.
