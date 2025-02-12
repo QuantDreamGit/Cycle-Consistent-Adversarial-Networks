@@ -22,37 +22,35 @@ Specifically, we focus on *sentiment* (positive, neutral and aggressive) transfe
 We use the [Yelp](https://papers.nips.cc/paper_files/paper/2017/hash/2d2c8394e31101a261abf1784302bf75-Abstract.html) dataset following the same splits as in [Li et al.](https://aclanthology.org/N18-1169/) available in the official [repository](https://github.com/lijuncen/Sentiment-and-Style-Transfer). Put it into the `data/yelp` folder and please name the files as `[train|dev|test].[0|1].txt`, where 0 is for negative sentiment and 1 is for positive sentiment.
 
 ## Training
-You can train the proposed CycleGAN architecture for Text Style Transfer using the `train.py` script. It can be customized using several command line arguments such as:
-- style_a/style_b: style A/B (i.e., informal/formal or negative/positive)
+You can train the proposed StarGAN architecture for Text Style Transfer using the `train.py` script. It can be customized using several command line arguments such as:
+- n_styles: set the total number of styles
 - generator_model_tag: tag or path of the generator model
 - discriminator_model_tag: tag or path of the discriminator model
-- pretrained_classifier_model: tag or path of the style classifier model
-- lambdas: loss weighting factors in the form "λ1|λ2|λ3|λ4|λ5" for cycle-consistency, generator, discriminator (fake), discriminator (real), and classifier-guided losses, respectively
-- path_mono_A/path_mono_B: path to the training dataset for style A/B
-- path_mono_A_eval/path_mono_B_eval: path to the validation dataset for style A/B (if references for validation are not available, as in the Yelp dataset)
-- path_paral_A_eval/path_paral_B_eval: path to the validation dataset for style A/B (if references for validation are available, as in the GYAFC dataset)
-- path_paral_eval_ref: path to the references for validation (if references available, as in the GYAFC dataset)
+- lambdas: loss weighting factors in the form "λ1|λ2|λ3|λ4|λ5" for generator (adversarial), generator (style), cycle-consistency, discriminator (real/fake) and discriminator (style), respectively
+- path_db_tr: path to the training dataset 
+- path_db_eval: path to the validation dataset
+- path_to_references: a list of path to the references dataset (one for each style)
 - learning_rate, epochs, batch_size: learning rate, number of epochs and batch size for model training
 
-As an example, to train the CycleGAN architecture for formality transfer using the GYAFC dataset (*Family & Relationships* domain), you can use the following command:
+As an example, to train the CycleGAN architecture for formality transfer using our custom dataset (*Sentiment* domain), you can use the following command:
 ```
-CUDA_VISIBLE_DEVICES=0 python train.py --style_a=informal --style_b=formal --lang=en \
-                       --path_mono_A=./data/GYAFC/family_relationships/train.0.txt --path_mono_B=./data/GYAFC/family_relationships/train.1.txt \
-                       --path_paral_A_eval=./data/GYAFC/family_relationships/dev.0.txt --path_paral_B_eval=./data/GYAFC/family_relationships/dev.1.txt --path_paral_eval_ref=./data/GYAFC/family_relationships/references/dev/ --n_references=4 --shuffle \
-                       --generator_model_tag=google-t5/t5-large --discriminator_model_tag=distilbert-base-cased --pretrained_classifier_model=./classifiers/GYAFC/family_relationships/bert-base-cased_5/ \
-                       --lambdas="10|1|1|1|1" --epochs=30 --learning_rate=5e-5 --max_sequence_length=64 --batch_size=8  \
-                       --save_base_folder=./ckpts/ --save_steps=1 --eval_strategy=epochs --eval_steps=1  --pin_memory --use_cuda_if_available
+!CUDA_VISIBLE_DEVICES=0 python NLP-project/train.py --n_styles=3 --lang=en \
+                       --path_db_tr=./data/yelp_and_aggression/yelp_and_aggression_60kTAG.txt --path_db_eval=./data/yelp_and_aggression/validation600.txt \
+                       --path_to_references ./data/yelp_and_aggression/tutte_AGGRESIVE.txt ./data/yelp_and_aggression/tutte_NEGATIVE.txt ./data/yelp_and_aggression/tutte_POSITIVE.txt \
+                       --shuffle \
+                       --generator_model_tag=google-t5/t5-small --discriminator_model_tag=distilbert-base-cased \
+                       --lambdas="1|1|10|1|1" --epochs=10 --learning_rate=5e-5 --max_sequence_length=64 --batch_size=64  \
+                       --save_base_folder=./ckpts/ --save_steps=1 --eval_strategy=epochs --eval_steps=1  --pin_memory --use_cuda_if_available \
 ```
 
 ## Testing
 Once trained, you can evaluate the performance on the test set of the trained models using the `test.py` script. It can be customized using several command line arguments such as:
-- style_a/style_b: style A/B (i.e., informal/formal or negative/positive)
+- n_styles: set the total number of styles
 - generator_model_tag: tag or path of the generator model
 - discriminator_model_tag: tag or path of the discriminator model
 - from_pretrained: folder to use as base path to load the model checkpoint(s) to test
-- pretrained_classifier_eval: tag or path of the oracle classifier model
-- path_paral_A_test/path_paral_B_test: path to the test dataset for style A/B
-- path_paral_test_ref: path to the references for test
+- path_db: path to the test dataset
+- path_to_references: a list of path to the references dataset (one for each style)
 
 As an example, to test the trained models for formality transfer using the GYAFC dataset (*Family & Relationships* domain), you can use the following command:
 ```
@@ -106,31 +104,10 @@ All model checkpoints are available on Hugging Face 🤗 at the following [colle
 <a rel="license" href="http://creativecommons.org/licenses/by-nc-sa/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by-nc-sa/4.0/88x31.png" /></a><br />This work is licensed under the <a rel="license" href="http://creativecommons.org/licenses/by-nc-sa/4.0/">Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License</a>.
 
 ## Authors
-[Moreno La Quatra](https://mlaquatra.me/), [Giuseppe Gallipoli](https://scholar.google.com/citations?user=uMRKRW0AAAAJ&hl=it), [Luca Cagliero](https://scholar.google.it/citations?user=0uIAXl8AAAAJ&hl=it)
+[Matteo Tomatis](), [Giuseppe Prioli](), [Federico XXX]()
 
 ### Corresponding author
-For any questions about the content of the paper or the implementation, you can contact me at: `giuseppe[DOT]gallipoli[AT]polito[DOT]it`.
+For any questions about the content of the paper or the implementation, you can contact us at: `s[DOT]334271[AT]studenti[DOT]polito[DOT]it`.
 
 ## Citation
-If you find this work useful, please cite our paper:
-
-```bibtex
-@article{LaQuatra24TST,
-author = {La Quatra, Moreno and Gallipoli, Giuseppe and Cagliero, Luca},
-title = {Self-supervised Text Style Transfer Using Cycle-Consistent Adversarial Networks},
-year = {2024},
-issue_date = {October 2024},
-publisher = {Association for Computing Machinery},
-address = {New York, NY, USA},
-volume = {15},
-number = {5},
-issn = {2157-6904},
-url = {https://doi.org/10.1145/3678179},
-doi = {10.1145/3678179},
-journal = {ACM Trans. Intell. Syst. Technol.},
-month = nov,
-articleno = {110},
-numpages = {38},
-keywords = {Text Style Transfer, Sentiment transfer, Formality transfer, Cycle-consistent Generative Adversarial Networks, Transformers}
-}
-```
+If you find this work useful, please cite our paper.
