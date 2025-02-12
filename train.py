@@ -161,11 +161,11 @@ print (f"Evaluation lenght (batches): {len(dl_eval)}")
 if args.from_pretrained is not None:
     G = GeneratorModel(args.generator_model_tag, f'{args.from_pretrained}Generator/', num_domains=args.n_styles, max_seq_length=args.max_sequence_length)
     D = DiscriminatorModel.DiscriminatorModel(args.discriminator_model_tag, f'{args.from_pretrained}Discriminator/', num_domains=args.n_styles, max_seq_length=args.max_sequence_length)
-    print('Generator e Discriminator pre-addestrati caricati correttamente')
+    print('Generator e Discriminator pre-trained correcly loaded')
 else:
     G = GeneratorModel(args.generator_model_tag, num_domains=args.n_styles, max_seq_length=args.max_sequence_length)
     D = DiscriminatorModel.DiscriminatorModel(args.discriminator_model_tag, num_domains=args.n_styles, max_seq_length=args.max_sequence_length)
-    print('Generator e Discriminator inizializzati con pesi casuali')
+    print('Generator e Discriminator initialized with random weights')
 
 ''' 
     ----- ----- ----- ----- ----- ----- ----- -----
@@ -266,26 +266,6 @@ for epoch in range(start_epoch, args.epochs):
         optimizer.zero_grad()
         progress_bar.update(1)
         current_training_step += 1
-
-        '''
-        # Dummy classification metrics/BERTScore computation
-        if current_training_step == 5:
-            if args.n_references is None:
-                evaluator.dummy_classif()
-            elif args.bertscore:
-                evaluator.dummy_bscore()
-    
-        # Valutazione durante l'addestramento
-        if (
-            (args.eval_strategy == "steps" and current_training_step % args.eval_steps == 0) or 
-            (epoch < args.additional_eval and current_training_step % (n_batch_epoch // 2 + 1) == 0)
-        ):
-            if args.n_references is not None:
-                evaluator.run_eval_no_ref(epoch, current_training_step, 'validation', dl_eval) ##DA MODIFICARE CON RUN_EVAL_REF
-            else:
-                evaluator.run_eval_no_ref(epoch, current_training_step, 'validation', dl_eval)
-            stargan.train()  # Ritorna in modalità train
-        '''
 
     # Evaluation at the end of an epoch
     if args.path_to_references is not None:
