@@ -310,48 +310,4 @@ class Evaluator():
         del df
         print(f'End {phase}...')
 
-        
-    #TO DO: Why don't they work?
-    def dummy_classif(self):
-        pred_A = ['wake up or you are going to lose your business .',
-                  'this place has none of them .',
-                  'it is april and there are no grass tees yet .',
-                  'there is no grass on the range .',
-                  'bottom line , this place sucks .',
-                  'someone should buy this place .',
-                  'very disappointed in the customer service .',
-                  'we will not be back .']
-        pred_B = ['huge sandwich !',
-                  'i added mushrooms , it was very flavorful .',
-                  'he enjoyed it as well .',
-                  'fast and friendly service .',
-                  'will definitely be back .',
-                  "my dad 's favorite .",
-                  'huge burgers , fish sandwiches , salads .',
-                  'decent service .']
-        acc, _, _, _ = self.__compute_classif_metrics__(pred_A, pred_B)
-        print('Dummy classification metrics computation end')
-
-
-    def dummy_bscore(self):
-        predictions = ['i just left this car wash and was very satisfied !',
-                    "just like ordering anything if you 're seated .",
-                    "one durable thing after another they do care to address .",
-                    'food was warm , i had the ribs .',
-                    'five stars is what i want to give .',
-                    'if i could give more stars , i would .',
-                    "they will tell you though .",
-                    'she was happy being there .']
-        references = [['i just left this car wash and was very satisfied !', 'i just left the car wash and i feel very satisfied', 'i did not leave this car wash and was very satisfied', 'i just left the car wash and i was very satisfied'],
-                    ["i would recommend ordering something once you 're seated", "ordering anything if you 're seated", 'the ordering service is nice', 'the staffs here are very attentive'],
-                    ['they addressed all the broken items', 'one correct thing after another they care to address', 'one broken thing after another they really care to address', 'they have good after sales service'],
-                    ['food was hot ( and fresh ) , i had the ribs .', "food was n't cold ( well cooked ) , i had the ribs", 'the food is food , i had the ribs', 'food was warm , i had the ribs .'],
-                    ['i want to give this a 5 out of 5 star rating .', '5 stars is what i would give', 'give five stars to him', 'give 5+ stars to him'],
-                    ['i would give an extra star if it allowed me', 'if i could give more stars , i definitely would', 'if i could give more stars , i would', 'i would give you more stars if i could'],
-                    ['they will tell you though .', 'they will tell you the details', 'they will tell you though .', 'they will tell you'],
-                    ['she seemed happy to be there', 'she was cheerful being there .', 'she was happy because being here', 'she was happy being there']]
-        scores = []
-        for pred, ref in zip(predictions, references):
-            res = self.bertscore.compute(predictions=[pred], references=[ref], lang=self.args.lang)
-            scores.append(res['f1'])
-        print('Dummy BERTScore computation end')
+    
