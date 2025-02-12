@@ -40,7 +40,7 @@ As an example, to train the CycleGAN architecture for formality transfer using o
                        --shuffle \
                        --generator_model_tag=google-t5/t5-small --discriminator_model_tag=distilbert-base-cased \
                        --lambdas="1|1|10|1|1" --epochs=10 --learning_rate=5e-5 --max_sequence_length=64 --batch_size=64  \
-                       --save_base_folder=./ckpts/ --save_steps=1 --eval_strategy=epochs --eval_steps=1  --pin_memory --use_cuda_if_available \
+                       --save_base_folder=./ckpts/ --save_steps=1 --eval_strategy=epochs --eval_steps=1  --pin_memory --use_cuda_if_available 
 ```
 
 ## Testing
@@ -54,50 +54,12 @@ Once trained, you can evaluate the performance on the test set of the trained mo
 
 As an example, to test the trained models for formality transfer using the GYAFC dataset (*Family & Relationships* domain), you can use the following command:
 ```
-CUDA_VISIBLE_DEVICES=0 python test.py --style_a=informal --style_b=formal --lang=en \
-                       --path_paral_A_test=./data/GYAFC/family_relationships/test.0.txt --path_paral_B_test=./data/GYAFC/family_relationships/test.1.txt --path_paral_test_ref=./data/GYAFC/family_relationships/references/test/ --n_references=4 \
+CUDA_VISIBLE_DEVICES=0 python NLP-project/train.py --n_styles=3 --lang=en \
+                       --path_db_test=./data/yelp_and_aggression/validation600.txt \
+                       --path_to_references ./data/yelp_and_aggression/tutte_AGGRESIVE.txt ./data/yelp_and_aggression/tutte_NEGATIVE.txt ./data/yelp_and_aggression/tutte_POSITIVE.txt \
                        --generator_model_tag=google-t5/t5-large --discriminator_model_tag=distilbert-base-cased \
-                       --pretrained_classifier_eval=./classifiers/GYAFC/family_relationships/bert-base-cased_5/ \
                        --from_pretrained=./ckpts/ --max_sequence_length=64 --batch_size=16 --pin_memory --use_cuda_if_available 
 ```
-
-## Model checkpoints
-All model checkpoints are available on Hugging Face 🤗 at the following [collection](https://huggingface.co/collections/ggallipoli/text-style-transfer-674b4bf7faef0be38154e535).
-
-### Formality transfer
-#### GYAFC dataset (Family & Relationships)
-
-|    model   |                       checkpoint                       |
-|:----------:|:------------------------------------------------------:|
-|  BART base | [informal-to-formal](https://huggingface.co/ggallipoli/bart-base_inf2for_family), [formal-to-informal](https://huggingface.co/ggallipoli/bart-base_for2inf_family) |
-| BART large | [informal-to-formal](https://huggingface.co/ggallipoli/bart-large_inf2for_family), [formal-to-informal](https://huggingface.co/ggallipoli/bart-large_for2inf_family) |
-|  T5 small  | [informal-to-formal](https://huggingface.co/ggallipoli/t5-small_inf2for_family), [formal-to-informal](https://huggingface.co/ggallipoli/t5-small_for2inf_family) |
-|   T5 base  | [informal-to-formal](https://huggingface.co/ggallipoli/t5-base_inf2for_family), [formal-to-informal](https://huggingface.co/ggallipoli/t5-base_for2inf_family) |
-|  T5 large  | [informal-to-formal](https://huggingface.co/ggallipoli/t5-large_inf2for_family), [formal-to-informal](https://huggingface.co/ggallipoli/t5-large_for2inf_family) |
-|  BERT base |                [style classifier](https://huggingface.co/ggallipoli/formality_classifier_gyafc_family)                |
-
-#### GYAFC dataset (Entertainment & Music)
-
-|    model   |                       checkpoint                       |
-|:----------:|:------------------------------------------------------:|
-|  BART base | [informal-to-formal](https://huggingface.co/ggallipoli/bart-base_inf2for_music), [formal-to-informal](https://huggingface.co/ggallipoli/bart-base_for2inf_music) |
-| BART large | [informal-to-formal](https://huggingface.co/ggallipoli/bart-large_inf2for_music), [formal-to-informal](https://huggingface.co/ggallipoli/bart-large_for2inf_music) |
-|  T5 small  | [informal-to-formal](https://huggingface.co/ggallipoli/t5-small_inf2for_music), [formal-to-informal](https://huggingface.co/ggallipoli/t5-small_for2inf_music) |
-|   T5 base  | [informal-to-formal](https://huggingface.co/ggallipoli/t5-base_inf2for_music), [formal-to-informal](https://huggingface.co/ggallipoli/t5-base_for2inf_music) |
-|  T5 large  | [informal-to-formal](https://huggingface.co/ggallipoli/t5-large_inf2for_music), [formal-to-informal](https://huggingface.co/ggallipoli/t5-large_for2inf_music) |
-|  BERT base |                [style classifier](https://huggingface.co/ggallipoli/formality_classifier_gyafc_music)                |
-
-### Sentiment transfer
-#### Yelp dataset
-
-|    model   |                       checkpoint                       |
-|:----------:|:------------------------------------------------------:|
-|  BART base | [negative-to-positive](https://huggingface.co/ggallipoli/bart-base_neg2pos), [positive-to-negative](https://huggingface.co/ggallipoli/bart-base_pos2neg) |
-| BART large | [negative-to-positive](https://huggingface.co/ggallipoli/bart-large_neg2pos), [positive-to-negative](https://huggingface.co/ggallipoli/bart-large_pos2neg) |
-|  T5 small  | [negative-to-positive](https://huggingface.co/ggallipoli/t5-small_neg2pos), [positive-to-negative](https://huggingface.co/ggallipoli/t5-small_pos2neg) |
-|   T5 base  | [negative-to-positive](https://huggingface.co/ggallipoli/t5-base_neg2pos), [positive-to-negative](https://huggingface.co/ggallipoli/t5-base_pos2neg) |
-|  T5 large  | [negative-to-positive](https://huggingface.co/ggallipoli/t5-large_neg2pos), [positive-to-negative](https://huggingface.co/ggallipoli/t5-large_pos2neg) |
-|  BERT base |                [style classifier](https://huggingface.co/ggallipoli/sentiment_classifier_yelp)                |
 
 ## License
 
