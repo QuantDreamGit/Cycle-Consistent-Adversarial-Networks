@@ -1,7 +1,7 @@
-# Self-supervised Text Style Transfer using Cycle-Consistent Adversarial Networks
-This repository contains the code for the paper [Self-supervised Text Style Transfer using Cycle-Consistent Adversarial Networks](https://dl.acm.org/doi/10.1145/3678179), published in ACM Transactions on Intelligent Systems and Technology.
+# Self-supervised Text Style Transfer using StarGAN
+This repository contains the code for the paper [XXX](https://dl.acm.org/doi/10.1145/3678179), produced for the PoliTo course of Deep Natural Language Processes.
 
-It includes the Python package to train and test the CycleGAN architecture for Text Style Transfer described in the paper.
+It includes the Python package to train and test the StarGAN architecture for Text Style Transfer described in the paper.
 
 ## Installation
 The following command will clone the project:
@@ -14,7 +14,7 @@ To install the required libraries and dependencies, you can refer to the `env.ym
 ## Usage
 The package provides the scripts to implement, train and test the StarGAN architecture for Text Style Transfer described in the paper.
 
-Specifically, we focus on *formality* and *sentiment* transfer tasks.
+Specifically, we focus on *sentiment* (positive, neutral and aggressive) transfer tasks.
 
 ## Data
 
