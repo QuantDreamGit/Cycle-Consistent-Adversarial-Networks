@@ -69,7 +69,7 @@ CUDA_VISIBLE_DEVICES=0 python NLP-project/train.py --n_styles=3 --lang=en \
 Matteo Tomatis, Giuseppe Priolo, Federico D'Agostino
 
 ### Corresponding author
-For any questions about the content of the paper or the implementation, you can contact us at: `s[DOT]334271[AT]studenti[DOT]polito[DOT]it`.
+For any questions about the StarGAN Model or the implementation, you can contact us at: `s[DOT]334271[AT]studenti[DOT]polito[DOT]it`.
 
 ## Citation
 If you find this work useful, please cite our paper.
