@@ -36,7 +36,7 @@ As an example, to train the CycleGAN architecture for formality transfer using o
 ```
 !CUDA_VISIBLE_DEVICES=0 python NLP-project/train.py --n_styles=3 --lang=en \
                        --path_db_tr=./data/yelp_and_aggression/yelp_and_aggression_60kTAG.txt --path_db_eval=./data/yelp_and_aggression/validation600.txt \
-                       --path_to_references ./data/yelp_and_aggression/tutte_AGGRESIVE.txt ./data/yelp_and_aggression/tutte_NEGATIVE.txt ./data/yelp_and_aggression/tutte_POSITIVE.txt \
+                       --path_to_references ./data/yelp_and_aggression/ref_AGGRESIVE.txt ./data/yelp_and_aggression/ref_NEGATIVE.txt ./data/yelp_and_aggression/ref_POSITIVE.txt \
                        --shuffle \
                        --generator_model_tag=google-t5/t5-small --discriminator_model_tag=distilbert-base-cased \
                        --lambdas="1|1|10|1|1" --epochs=10 --learning_rate=5e-5 --max_sequence_length=64 --batch_size=64  \
@@ -56,7 +56,7 @@ As an example, to test the trained models for formality transfer using the GYAFC
 ```
 CUDA_VISIBLE_DEVICES=0 python NLP-project/train.py --n_styles=3 --lang=en \
                        --path_db_test=./data/yelp_and_aggression/validation600.txt \
-                       --path_to_references ./data/yelp_and_aggression/tutte_AGGRESIVE.txt ./data/yelp_and_aggression/tutte_NEGATIVE.txt ./data/yelp_and_aggression/tutte_POSITIVE.txt \
+                       --path_to_references ./data/yelp_and_aggression/ref_AGGRESIVE.txt ./data/yelp_and_aggression/ref_NEGATIVE.txt ./data/yelp_and_aggression/ref_POSITIVE.txt \
                        --generator_model_tag=google-t5/t5-large --discriminator_model_tag=distilbert-base-cased \
                        --from_pretrained=./ckpts/ --max_sequence_length=64 --batch_size=16 --pin_memory --use_cuda_if_available 
 ```
