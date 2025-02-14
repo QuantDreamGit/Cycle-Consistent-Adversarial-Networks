@@ -1,5 +1,5 @@
 # Self-supervised Text Style Transfer using StarGAN
-This repository contains the code for the paper [XXX](https://dl.acm.org/doi/10.1145/3678179), produced for the PoliTo course of Deep Natural Language Processes.
+This repository contains the code for the report 'Enhancing Text Style Transfer with Cycle-Consistent Adversarial Networks: Data Augmentation and Multi-Style Adaptation', produced for the PoliTo course of Deep Natural Language Processes.
 
 It includes the Python package to train and test the StarGAN architecture for Text Style Transfer described in the paper.
 
