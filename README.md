@@ -19,7 +19,7 @@ Specifically, we focus on *sentiment* (positive, neutral and aggressive) transfe
 ## Data
 
 ### Sentiment transfer
-We use the [Yelp](https://papers.nips.cc/paper_files/paper/2017/hash/2d2c8394e31101a261abf1784302bf75-Abstract.html) dataset following the same splits as in [Li et al.](https://aclanthology.org/N18-1169/) available in the official [repository](https://github.com/lijuncen/Sentiment-and-Style-Transfer). Put it into the `data/yelp` folder and please name the files as `[train|dev|test].[0|1].txt`, where 0 is for negative sentiment and 1 is for positive sentiment.
+We use the [Yelp](https://papers.nips.cc/paper_files/paper/2017/hash/2d2c8394e31101a261abf1784302bf75-Abstract.html) dataset for positive and negative sentiments, following the same splits as in [Li et al.](https://aclanthology.org/N18-1169/) available in the official [repository](https://github.com/lijuncen/Sentiment-and-Style-Transfer). Put it into the `data/yelp` folder and please name the files as `[train|dev|test].[0|1].txt`, where 0 is for negative sentiment and 1 is for positive sentiment. For the third style we use a portion of the [Wikipedia Talk Labels: Aggression](https://figshare.com/articles/dataset/Wikipedia_Talk_Labels_Aggression/4267550) dataset. We seclected the sentences shorter than 50 words with higiest 'personal aggression' score. Files 'ref_AGGRESIVE.txt', 'ref_NEGATIVE.txt' and 'ref_POSITIVE.txt' contain the same sentences in the three different styles to use as reference ofr the model.
 
 ## Training
 You can train the proposed StarGAN architecture for Text Style Transfer using the `train.py` script. It can be customized using several command line arguments such as:
